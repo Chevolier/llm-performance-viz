@@ -63,7 +63,7 @@ class LlmApiClient:
             "completion_tokens": 0,
             "total_tokens": 0
         }
-        print(user_prompt)
+        # print(user_prompt)
         try:
             response = requests.post(url, json=payload, headers=headers, stream=True)
             
@@ -83,7 +83,7 @@ class LlmApiClient:
                                 response_text.append(delta["reasoning_content"])
                             if "content" in delta and delta["content"]:
                                 response_text.append(delta["content"])
-                            print(response_text[-1], end="", flush=True)
+                            # print(response_text[-1], end="", flush=True)
                                 
                         # Record token usage if available
                         if "usage" in out:

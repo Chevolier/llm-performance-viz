@@ -1,0 +1,294 @@
+"""
+Automated testing tool for vLLM deployments with comprehensive test matrix.
+"""
+
+import json
+import yaml
+import time
+import os
+from pathlib import Path
+from typing import Dict, List, Any
+from dataclasses import dataclass
+
+from .deployment import VllmDeployment
+from .config import TestConfig
+from .runner import TestRunner
+from .analyzer import ResultAnalyzer
+
+
+@dataclass
+class TestCase:
+    """Individual test case configuration"""
+    input_tokens: int
+    output_tokens: int
+    processing_num: int
+    random_tokens: int
+    
+    def __str__(self):
+        return f"in:{self.input_tokens}_out:{self.output_tokens}_proc:{self.processing_num}_rand:{self.random_tokens}"
+
+
+class AutoTestRunner:
+    """Automated test runner for vLLM deployments"""
+    
+    def __init__(self, config_path: str, output_dir: str = "test_results"):
+        """Initialize with deployment configuration"""
+        self.deployment = VllmDeployment(config_path)
+        self.config_path = Path(config_path)
+        
+        # Load config file (support both YAML and JSON)
+        with open(config_path, 'r') as f:
+            if self.config_path.suffix.lower() in ['.yaml', '.yml']:
+                self.full_config = yaml.safe_load(f)
+            else:
+                self.full_config = json.load(f)
+        
+        self.test_matrix = self.full_config['test_matrix']
+        self.test_config = self.full_config['test_config']
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(exist_ok=True)
+        
+        # Generate test cases from matrix
+        self.test_cases = self._generate_test_cases()
+        
+    def _generate_test_cases(self) -> List[TestCase]:
+        """Generate all test case combinations from the test matrix"""
+        test_cases = []
+        for input_tokens in self.test_matrix['input_tokens']:
+            for output_tokens in self.test_matrix['output_tokens']:
+                for processing_num in self.test_matrix['processing_num']:
+                    for random_tokens in self.test_matrix['random_tokens']:
+                        # Skip test cases where random_tokens > input_tokens
+                        if random_tokens > input_tokens:
+                            print(f"Skipping test case: input_tokens={input_tokens}, random_tokens={random_tokens} (random > input)")
+                            continue
+                        
+                        test_cases.append(TestCase(
+                            input_tokens=input_tokens,
+                            output_tokens=output_tokens,
+                            processing_num=processing_num,
+                            random_tokens=random_tokens
+                        ))
+        return test_cases
+    
+    def _create_test_config(self, test_case: TestCase) -> TestConfig:
+        """Create a TestConfig for a specific test case"""
+        return TestConfig(
+            processes=test_case.processing_num,
+            requests_per_process=self.test_config['requests_per_process'],
+            model_id=self.deployment.get_model_id(),
+            input_tokens=test_case.input_tokens,
+            random_tokens=test_case.random_tokens,
+            output_tokens=test_case.output_tokens,
+            url=self.deployment.get_api_url(),
+            output_file=str(self.output_dir / f"test_{test_case}.json")
+        )
+    
+    def _run_warmup(self, test_case: TestCase) -> None:
+        """Run warmup requests before the actual test"""
+        print(f"Running {self.test_config['warmup_requests']} warmup requests...")
+        
+        warmup_config = TestConfig(
+            processes=1,
+            requests_per_process=self.test_config['warmup_requests'],
+            model_id=self.deployment.get_model_id(),
+            input_tokens=test_case.input_tokens,
+            random_tokens=test_case.random_tokens,
+            output_tokens=test_case.output_tokens,
+            url=self.deployment.get_api_url(),
+            output_file=str(self.output_dir / f"warmup_{test_case}.json")
+        )
+        
+        TestRunner.run(warmup_config)
+        print("Warmup completed")
+    
+    def run_single_test(self, test_case: TestCase) -> Dict[str, Any]:
+        """Run a single test case"""
+        print(f"\n{'='*60}")
+        print(f"Running test case: {test_case}")
+        print(f"Input tokens: {test_case.input_tokens}")
+        print(f"Output tokens: {test_case.output_tokens}")
+        print(f"Concurrent processes: {test_case.processing_num}")
+        print(f"Random tokens: {test_case.random_tokens}")
+        print(f"{'='*60}")
+        
+        # Run warmup
+        self._run_warmup(test_case)
+        
+        # Wait for cooldown
+        if self.test_config['cooldown_seconds'] > 0:
+            print(f"Cooling down for {self.test_config['cooldown_seconds']} seconds...")
+            time.sleep(self.test_config['cooldown_seconds'])
+        
+        # Create test configuration
+        config = self._create_test_config(test_case)
+        
+        # Run the actual test
+        start_time = time.time()
+        results = TestRunner.run(config)
+        total_time = time.time() - start_time
+        
+        # Analyze results
+        analysis = ResultAnalyzer.analyze(results, total_time, config)
+        
+        # Save results
+        ResultAnalyzer.save_results(analysis, config.output_file)
+        
+        # Print summary
+        ResultAnalyzer.print_summary(analysis)
+        
+        return analysis
+    
+    def run_all_tests(self) -> Dict[str, Any]:
+        """Run all test cases in the matrix"""
+        print(f"Starting automated test suite with {len(self.test_cases)} test cases")
+        print(f"Output directory: {self.output_dir}")
+        
+        # Deploy the server
+        print("\nDeploying vLLM server...")
+        if not self.deployment.deploy():
+            raise RuntimeError("Failed to deploy vLLM server")
+        
+        all_results = {}
+        failed_tests = []
+        
+        try:
+            for i, test_case in enumerate(self.test_cases, 1):
+                print(f"\nProgress: {i}/{len(self.test_cases)}")
+                
+                try:
+                    result = self.run_single_test(test_case)
+                    all_results[str(test_case)] = result
+                except Exception as e:
+                    print(f"Test case {test_case} failed: {e}")
+                    failed_tests.append((str(test_case), str(e)))
+                    continue
+        
+        finally:
+            # Cleanup deployment
+            print("\nCleaning up deployment...")
+            self.deployment.cleanup()
+        
+        # Save comprehensive results
+        comprehensive_results = {
+            "test_matrix": self.test_matrix,
+            "test_config": self.test_config,
+            "deployment_config": self.full_config['deployment'],
+            "results": all_results,
+            "failed_tests": failed_tests,
+            "summary": self._generate_summary(all_results)
+        }
+        
+        summary_file = self.output_dir / "comprehensive_results.json"
+        with open(summary_file, 'w') as f:
+            json.dump(comprehensive_results, f, indent=2)
+        
+        print(f"\nComprehensive results saved to: {summary_file}")
+        self._print_final_summary(comprehensive_results)
+        
+        return comprehensive_results
+    
+    def _generate_summary(self, all_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate summary statistics across all test cases"""
+        if not all_results:
+            return {}
+        
+        summary = {
+            "total_tests": len(all_results),
+            "avg_throughput": 0,
+            "avg_first_token_latency": 0,
+            "avg_end_to_end_latency": 0,
+            "best_throughput": {"value": 0, "test_case": ""},
+            "worst_throughput": {"value": float('inf'), "test_case": ""},
+            "best_latency": {"value": float('inf'), "test_case": ""},
+            "worst_latency": {"value": 0, "test_case": ""}
+        }
+        
+        throughputs = []
+        first_token_latencies = []
+        end_to_end_latencies = []
+        
+        for test_case, result in all_results.items():
+            if 'performance_metrics' in result:
+                metrics = result['performance_metrics']
+                
+                throughput = metrics.get('throughput_tokens_per_second', 0)
+                first_token_lat = metrics.get('avg_first_token_latency', 0)
+                end_to_end_lat = metrics.get('avg_end_to_end_latency', 0)
+                
+                throughputs.append(throughput)
+                first_token_latencies.append(first_token_lat)
+                end_to_end_latencies.append(end_to_end_lat)
+                
+                # Track best/worst throughput
+                if throughput > summary["best_throughput"]["value"]:
+                    summary["best_throughput"] = {"value": throughput, "test_case": test_case}
+                if throughput < summary["worst_throughput"]["value"]:
+                    summary["worst_throughput"] = {"value": throughput, "test_case": test_case}
+                
+                # Track best/worst latency (lower is better)
+                if end_to_end_lat < summary["best_latency"]["value"]:
+                    summary["best_latency"] = {"value": end_to_end_lat, "test_case": test_case}
+                if end_to_end_lat > summary["worst_latency"]["value"]:
+                    summary["worst_latency"] = {"value": end_to_end_lat, "test_case": test_case}
+        
+        if throughputs:
+            summary["avg_throughput"] = sum(throughputs) / len(throughputs)
+        if first_token_latencies:
+            summary["avg_first_token_latency"] = sum(first_token_latencies) / len(first_token_latencies)
+        if end_to_end_latencies:
+            summary["avg_end_to_end_latency"] = sum(end_to_end_latencies) / len(end_to_end_latencies)
+        
+        return summary
+    
+    def _print_final_summary(self, comprehensive_results: Dict[str, Any]) -> None:
+        """Print final summary of all test results"""
+        summary = comprehensive_results.get('summary', {})
+        failed_tests = comprehensive_results.get('failed_tests', [])
+        
+        print(f"\n{'='*80}")
+        print("COMPREHENSIVE TEST SUMMARY")
+        print(f"{'='*80}")
+        print(f"Total test cases: {summary.get('total_tests', 0)}")
+        print(f"Failed tests: {len(failed_tests)}")
+        print(f"Success rate: {((summary.get('total_tests', 0) - len(failed_tests)) / max(summary.get('total_tests', 1), 1) * 100):.1f}%")
+        print()
+        print(f"Average throughput: {summary.get('avg_throughput', 0):.2f} tokens/sec")
+        print(f"Average first token latency: {summary.get('avg_first_token_latency', 0):.3f}s")
+        print(f"Average end-to-end latency: {summary.get('avg_end_to_end_latency', 0):.3f}s")
+        print()
+        
+        best_throughput = summary.get('best_throughput', {})
+        if best_throughput.get('value', 0) > 0:
+            print(f"Best throughput: {best_throughput['value']:.2f} tokens/sec ({best_throughput['test_case']})")
+        
+        best_latency = summary.get('best_latency', {})
+        if best_latency.get('value', float('inf')) < float('inf'):
+            print(f"Best latency: {best_latency['value']:.3f}s ({best_latency['test_case']})")
+        
+        if failed_tests:
+            print(f"\nFailed tests:")
+            for test_case, error in failed_tests:
+                print(f"  - {test_case}: {error}")
+        
+        print(f"{'='*80}")
+
+
+def main():
+    """Main entry point for automated testing"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Automated vLLM testing tool")
+    parser.add_argument("--config", type=str, required=True,
+                        help="Path to deployment configuration file")
+    parser.add_argument("--output-dir", type=str, default="test_results",
+                        help="Output directory for test results")
+    
+    args = parser.parse_args()
+    
+    runner = AutoTestRunner(args.config, args.output_dir)
+    runner.run_all_tests()
+
+
+if __name__ == "__main__":
+    main()

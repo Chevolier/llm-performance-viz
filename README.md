@@ -1,15 +1,17 @@
 # LLM Test Tool
 
-A lightweight tool for testing LLM API performance with customizable parameters.
+A comprehensive tool for testing LLM API performance with automated deployment and extensive test matrices.
 
 ## Features
 
 - Test LLM API performance with multiple parallel processes
-- Customize model ID, input tokens, random tokens, and output tokens
+- Automated vLLM Docker deployment and management
+- Comprehensive test matrix with configurable input/output tokens and concurrency levels
 - Measure first token latency, end-to-end latency, and output tokens per second
 - Generate detailed statistical reports with percentiles (p25, p50, p75, p90)
 - Support for prompt caching optimization with fixed and random prompt parts
 - Token usage tracking and analysis
+- Automated warmup and cooldown between test cases
 
 ## Installation
 
@@ -21,8 +23,24 @@ uv pip install -e .
 
 ## Usage
 
+### Manual Testing
+
 ```bash
 llm-test --processes 4 --requests 10 --model_id "Qwen/Qwen3-30B-A3B-FP8" --input_tokens 20 --random_tokens 5 --output_tokens 100 --url "http://localhost:8080/v1/chat/completions"
+```
+
+### Automated Testing with Docker Deployment
+
+The tool now supports automated testing with Docker deployment management:
+
+```bash
+python run_auto_test.py model_deploy_scripts/vllm-v0.9.2/g6e.4xlarge/config.yaml
+```
+
+Or using the module directly:
+
+```bash
+python -m llm_test_tool auto-test --config model_deploy_scripts/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
 ```
 
 ### Parameters
@@ -114,3 +132,70 @@ Percentiles:
 
 Detailed results saved to: test_results.json
 ```
+## Co
+nfiguration
+
+### Deployment Configuration
+
+The automated testing uses a YAML configuration file that defines both deployment and testing parameters:
+
+```yaml
+deployment:
+  docker_image: "vllm/vllm-openai:v0.9.2"
+  container_name: "vllm-qwen3-30b"
+  port: 8080
+  gpu_config:
+    gpus: "all"
+    gpu_memory_utilization: 0.95
+    shm_size: "747g"
+  model_config:
+    model: "Qwen/Qwen3-30B-A3B-FP8"
+    max_model_len: 16384
+    trust_remote_code: true
+    enable_reasoning: true
+    tool_call_parser: "hermes"
+    reasoning_parser: "deepseek_r1"
+  volumes:
+    - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+
+test_matrix:
+  input_tokens: [100, 200, 400, 800, 2000, 4000, 8000]
+  output_tokens: [20, 100, 400, 1000]
+  processing_num: [1, 4, 16, 32, 64, 128]
+  random_tokens: [2, 10, 50, 100]
+
+test_config:
+  requests_per_process: 5
+  warmup_requests: 3
+  cooldown_seconds: 5
+```
+
+### Test Matrix
+
+The automated testing runs through all combinations of:
+- **Input tokens**: [100, 200, 400, 800, 2000, 4000, 8000]
+- **Output tokens**: [20, 100, 400, 1000]  
+- **Processing numbers**: [1, 4, 16, 32, 64, 128]
+- **Random tokens**: [2, 10, 50, 100]
+
+Test cases where `random_tokens > input_tokens` are automatically skipped to ensure valid configurations.
+
+This creates a comprehensive performance profile across different load conditions and prompt caching scenarios.
+
+## Automated Testing Features
+
+- **Docker Management**: Automatically starts, stops, and manages vLLM Docker containers
+- **Health Checking**: Waits for the server to become healthy before testing
+- **Warmup Requests**: Runs warmup requests before each test case to ensure consistent results
+- **Cooldown Periods**: Configurable cooldown between test cases
+- **Comprehensive Results**: Saves individual test results and generates summary statistics
+- **Error Handling**: Continues testing even if individual test cases fail
+- **Resource Cleanup**: Automatically cleans up Docker containers after testing
+
+## Output
+
+The automated testing generates:
+- Individual test result files for each test case
+- A comprehensive results file with all test data and summary statistics
+- Console output showing progress and real-time results
+- Performance comparisons across different configurations
