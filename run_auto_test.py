@@ -3,6 +3,7 @@
 Convenience script to run automated vLLM testing.
 """
 
+import argparse
 import sys
 import os
 from pathlib import Path
@@ -12,25 +13,141 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from llm_test_tool.auto_test import AutoTestRunner
 
+
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="Automated vLLM testing tool with Docker deployment",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run with default output directory
+  python run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml
+  
+  # Run with custom output directory
+  python run_auto_test.py --config config.yaml --output-dir my_results
+  
+  # Run with verbose output
+  python run_auto_test.py --config config.yaml --verbose
+  
+  # Skip deployment (use existing running server)
+  python run_auto_test.py --config config.yaml --skip-deployment
+  
+  # Force rerun all tests (ignore existing results)
+  python run_auto_test.py --config config.yaml --force-rerun
+        """
+    )
+    
+    parser.add_argument(
+        "--config", "-c",
+        type=str,
+        required=True,
+        help="Path to YAML or JSON configuration file"
+    )
+    
+    parser.add_argument(
+        "--output-dir", "-o",
+        type=str,
+        default="test_results",
+        help="Output directory for test results (default: test_results)"
+    )
+    
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose output"
+    )
+    
+    parser.add_argument(
+        "--skip-deployment",
+        action="store_true",
+        help="Skip Docker deployment (assume server is already running)"
+    )
+    
+    parser.add_argument(
+        "--force-rerun",
+        action="store_true",
+        help="Force rerun all tests, ignoring existing results"
+    )
+    
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be tested without actually running tests"
+    )
+    
+    return parser.parse_args()
+
+
 def main():
     """Main entry point"""
-    if len(sys.argv) < 2:
-        print("Usage: python run_auto_test.py <config_path> [output_dir]")
-        print("Example: python run_auto_test.py model_deploy_scripts/vllm-v0.9.2/g6e.4xlarge/config.yaml")
+    args = parse_arguments()
+    
+    # Validate config file exists
+    if not os.path.exists(args.config):
+        print(f"Error: Configuration file not found: {args.config}")
         sys.exit(1)
     
-    config_path = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "test_results"
+    # Print configuration
+    print(f"Starting automated vLLM testing")
+    print(f"Config file: {args.config}")
+    print(f"Output directory: {args.output_dir}")
+    print(f"Verbose mode: {'enabled' if args.verbose else 'disabled'}")
+    print(f"Skip deployment: {'yes' if args.skip_deployment else 'no'}")
+    print(f"Force rerun: {'yes' if args.force_rerun else 'no'}")
+    print(f"Dry run: {'yes' if args.dry_run else 'no'}")
+    print("-" * 60)
     
-    if not os.path.exists(config_path):
-        print(f"Error: Configuration file not found: {config_path}")
+    try:
+        runner = AutoTestRunner(args.config, args.output_dir)
+        
+        if args.dry_run:
+            print("DRY RUN MODE - Showing test cases that would be executed:")
+            print(f"Total test cases: {len(runner.test_cases)}")
+            
+            # Check for existing results if not forcing rerun
+            remaining_tests = len(runner.test_cases)
+            if not args.force_rerun:
+                existing_count = 0
+                for test_case in runner.test_cases:
+                    if runner._load_existing_result(test_case) is not None:
+                        existing_count += 1
+                
+                remaining_tests = len(runner.test_cases) - existing_count
+                
+                if existing_count > 0:
+                    print(f"Found {existing_count} existing results that would be reused")
+                    print(f"Would run {remaining_tests} new tests")
+                    
+                    if remaining_tests == 0:
+                        print("✓ All results exist - would skip server deployment")
+                    elif not args.skip_deployment:
+                        print("→ Would deploy server for new tests")
+                    else:
+                        print("→ Would assume server is already running")
+            
+            for i, test_case in enumerate(runner.test_cases, 1):
+                existing = ""
+                if not args.force_rerun and runner._load_existing_result(test_case) is not None:
+                    existing = " (existing result)"
+                print(f"  {i:3d}. {test_case}{existing}")
+            print(f"\nWould save results to: {args.output_dir}")
+            return
+        
+        # Run the tests
+        skip_existing = not args.force_rerun
+        runner.run_all_tests(skip_existing=skip_existing, skip_deployment=args.skip_deployment)
+            
+    except KeyboardInterrupt:
+        print("\nTest interrupted by user")
         sys.exit(1)
-    
-    print(f"Starting automated test with config: {config_path}")
-    print(f"Results will be saved to: {output_dir}")
-    
-    runner = AutoTestRunner(config_path, output_dir)
-    runner.run_all_tests()
+    except Exception as e:
+        print(f"Error running tests: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

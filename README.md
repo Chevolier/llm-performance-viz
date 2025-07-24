@@ -34,13 +34,26 @@ llm-test --processes 4 --requests 10 --model_id "Qwen/Qwen3-30B-A3B-FP8" --input
 The tool now supports automated testing with Docker deployment management:
 
 ```bash
-python run_auto_test.py model_deploy_scripts/vllm-v0.9.2/g6e.4xlarge/config.yaml
+# Basic usage
+python run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml
+
+# With custom output directory
+python run_auto_test.py --config config.yaml --output-dir my_results
+
+# Dry run to see what tests would be executed
+python run_auto_test.py --config config.yaml --dry-run
+
+# Verbose output for debugging
+python run_auto_test.py --config config.yaml --verbose
+
+# Force rerun all tests (ignore existing results)
+python run_auto_test.py --config config.yaml --force-rerun
 ```
 
 Or using the module directly:
 
 ```bash
-python -m llm_test_tool auto-test --config model_deploy_scripts/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
+python -m llm_test_tool auto-test --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
 ```
 
 ### Parameters
@@ -182,6 +195,19 @@ Test cases where `random_tokens > input_tokens` are automatically skipped to ens
 
 This creates a comprehensive performance profile across different load conditions and prompt caching scenarios.
 
+## Command Line Options
+
+The `run_auto_test.py` script supports several options:
+
+- `--config, -c`: Path to YAML or JSON configuration file (required)
+- `--output-dir, -o`: Output directory for test results (default: test_results)
+- `--verbose, -v`: Enable verbose output for debugging
+- `--skip-deployment`: Skip Docker deployment (assume server is already running)
+- `--force-rerun`: Force rerun all tests, ignoring existing results
+- `--dry-run`: Show what tests would be executed without running them
+
+Use `python run_auto_test.py --help` for full usage information.
+
 ## Automated Testing Features
 
 - **Docker Management**: Automatically starts, stops, and manages vLLM Docker containers
@@ -191,6 +217,10 @@ This creates a comprehensive performance profile across different load condition
 - **Comprehensive Results**: Saves individual test results and generates summary statistics
 - **Error Handling**: Continues testing even if individual test cases fail
 - **Resource Cleanup**: Automatically cleans up Docker containers after testing
+- **Dry Run Mode**: Preview test cases without executing them
+- **Verbose Logging**: Detailed output for troubleshooting
+- **Result Caching**: Automatically skips test cases with existing results
+- **Force Rerun**: Option to ignore cached results and rerun all tests
 
 ## Output
 

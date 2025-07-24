@@ -102,15 +102,40 @@ class AutoTestRunner:
         TestRunner.run(warmup_config)
         print("Warmup completed")
     
-    def run_single_test(self, test_case: TestCase) -> Dict[str, Any]:
+    def _load_existing_result(self, test_case: TestCase) -> Dict[str, Any]:
+        """Load existing test result if it exists"""
+        config = self._create_test_config(test_case)
+        result_file = Path(config.output_file)
+        
+        if result_file.exists():
+            try:
+                with open(result_file, 'r') as f:
+                    existing_result = json.load(f)
+                print(f"Found existing result for test case: {test_case}")
+                return existing_result
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Could not load existing result for {test_case}: {e}")
+                return None
+        return None
+    
+    def run_single_test(self, test_case: TestCase, skip_existing: bool = True) -> Dict[str, Any]:
         """Run a single test case"""
         print(f"\n{'='*60}")
-        print(f"Running test case: {test_case}")
+        print(f"Test case: {test_case}")
         print(f"Input tokens: {test_case.input_tokens}")
         print(f"Output tokens: {test_case.output_tokens}")
         print(f"Concurrent processes: {test_case.processing_num}")
         print(f"Random tokens: {test_case.random_tokens}")
         print(f"{'='*60}")
+        
+        # Check for existing results
+        if skip_existing:
+            existing_result = self._load_existing_result(test_case)
+            if existing_result is not None:
+                print("✓ Using existing test result (skipping execution)")
+                return existing_result
+        
+        print("Running new test...")
         
         # Run warmup
         self._run_warmup(test_case)
@@ -139,25 +164,59 @@ class AutoTestRunner:
         
         return analysis
     
-    def run_all_tests(self) -> Dict[str, Any]:
+    def run_all_tests(self, skip_existing: bool = True, skip_deployment: bool = False) -> Dict[str, Any]:
         """Run all test cases in the matrix"""
         print(f"Starting automated test suite with {len(self.test_cases)} test cases")
         print(f"Output directory: {self.output_dir}")
+        print(f"Skip existing results: {'yes' if skip_existing else 'no'}")
+        print(f"Skip deployment: {'yes' if skip_deployment else 'no'}")
         
-        # Deploy the server
-        print("\nDeploying vLLM server...")
-        if not self.deployment.deploy():
-            raise RuntimeError("Failed to deploy vLLM server")
+        # Check for existing results
+        remaining_tests = len(self.test_cases)
+        if skip_existing:
+            existing_count = 0
+            for test_case in self.test_cases:
+                if self._load_existing_result(test_case) is not None:
+                    existing_count += 1
+            
+            remaining_tests = len(self.test_cases) - existing_count
+            
+            if existing_count > 0:
+                print(f"Found {existing_count} existing test results that will be reused")
+                print(f"Will run {remaining_tests} new tests")
+        
+        # Skip deployment if no new tests need to be run
+        need_deployment = remaining_tests > 0 and not skip_deployment
+        
+        if remaining_tests == 0:
+            print("\n✓ All test results already exist - skipping server deployment")
+            print("✓ No new tests to run - proceeding directly to results compilation")
+            skip_deployment = True
+        elif not skip_deployment:
+            print("\nDeploying vLLM server...")
+            if not self.deployment.deploy():
+                raise RuntimeError("Failed to deploy vLLM server")
+        else:
+            print("\nSkipping deployment - assuming server is already running")
         
         all_results = {}
         failed_tests = []
+        skipped_tests = []
         
         try:
             for i, test_case in enumerate(self.test_cases, 1):
                 print(f"\nProgress: {i}/{len(self.test_cases)}")
                 
                 try:
-                    result = self.run_single_test(test_case)
+                    # Check if we should skip this test
+                    if skip_existing:
+                        existing_result = self._load_existing_result(test_case)
+                        if existing_result is not None:
+                            all_results[str(test_case)] = existing_result
+                            skipped_tests.append(str(test_case))
+                            continue
+                    
+                    result = self.run_single_test(test_case, skip_existing=False)  # Don't double-check
                     all_results[str(test_case)] = result
                 except Exception as e:
                     print(f"Test case {test_case} failed: {e}")
@@ -165,9 +224,10 @@ class AutoTestRunner:
                     continue
         
         finally:
-            # Cleanup deployment
-            print("\nCleaning up deployment...")
-            self.deployment.cleanup()
+            # Cleanup deployment if we deployed it
+            if need_deployment:
+                print("\nCleaning up deployment...")
+                self.deployment.cleanup()
         
         # Save comprehensive results
         comprehensive_results = {
@@ -176,6 +236,7 @@ class AutoTestRunner:
             "deployment_config": self.full_config['deployment'],
             "results": all_results,
             "failed_tests": failed_tests,
+            "skipped_tests": skipped_tests,
             "summary": self._generate_summary(all_results)
         }
         
@@ -245,11 +306,13 @@ class AutoTestRunner:
         """Print final summary of all test results"""
         summary = comprehensive_results.get('summary', {})
         failed_tests = comprehensive_results.get('failed_tests', [])
+        skipped_tests = comprehensive_results.get('skipped_tests', [])
         
         print(f"\n{'='*80}")
         print("COMPREHENSIVE TEST SUMMARY")
         print(f"{'='*80}")
         print(f"Total test cases: {summary.get('total_tests', 0)}")
+        print(f"Skipped tests (existing results): {len(skipped_tests)}")
         print(f"Failed tests: {len(failed_tests)}")
         print(f"Success rate: {((summary.get('total_tests', 0) - len(failed_tests)) / max(summary.get('total_tests', 1), 1) * 100):.1f}%")
         print()
@@ -265,6 +328,13 @@ class AutoTestRunner:
         best_latency = summary.get('best_latency', {})
         if best_latency.get('value', float('inf')) < float('inf'):
             print(f"Best latency: {best_latency['value']:.3f}s ({best_latency['test_case']})")
+        
+        if skipped_tests:
+            print(f"\nSkipped tests (reused existing results):")
+            for test_case in skipped_tests[:5]:  # Show first 5
+                print(f"  - {test_case}")
+            if len(skipped_tests) > 5:
+                print(f"  ... and {len(skipped_tests) - 5} more")
         
         if failed_tests:
             print(f"\nFailed tests:")
