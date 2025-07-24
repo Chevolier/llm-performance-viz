@@ -6,6 +6,7 @@ import json
 import yaml
 import time
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any
 from dataclasses import dataclass
@@ -31,7 +32,7 @@ class TestCase:
 class AutoTestRunner:
     """Automated test runner for vLLM deployments"""
     
-    def __init__(self, config_path: str, output_dir: str = "test_results"):
+    def __init__(self, config_path: str, output_dir: str = None):
         """Initialize with deployment configuration"""
         self.deployment = VllmDeployment(config_path)
         self.config_path = Path(config_path)
@@ -45,11 +46,24 @@ class AutoTestRunner:
         
         self.test_matrix = self.full_config['test_matrix']
         self.test_config = self.full_config['test_config']
+        
+        # Generate output directory with timestamp and model ID if not specified
+        if output_dir is None:
+            output_dir = self._generate_output_dir()
+        
         self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Generate test cases from matrix
         self.test_cases = self._generate_test_cases()
+    
+    def _generate_output_dir(self) -> str:
+        """Generate output directory name with current timestamp"""
+        # Generate timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create directory name under test_results
+        return f"test_results/{timestamp}"
         
     def _generate_test_cases(self) -> List[TestCase]:
         """Generate all test case combinations from the test matrix"""

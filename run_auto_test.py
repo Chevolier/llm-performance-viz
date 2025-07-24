@@ -48,8 +48,8 @@ Examples:
     parser.add_argument(
         "--output-dir", "-o",
         type=str,
-        default="test_results",
-        help="Output directory for test results (default: test_results)"
+        default=None,
+        help="Output directory for test results (default: auto-generated with timestamp under test_results/)"
     )
     
     parser.add_argument(
@@ -100,6 +100,12 @@ def main():
     
     try:
         runner = AutoTestRunner(args.config, args.output_dir)
+        
+        # Show the actual output directory being used
+        if args.output_dir is None:
+            print(f"Auto-generated output directory: {runner.output_dir}")
+        else:
+            print(f"Using specified output directory: {runner.output_dir}")
         
         if args.dry_run:
             print("DRY RUN MODE - Showing test cases that would be executed:")

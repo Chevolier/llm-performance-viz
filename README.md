@@ -200,7 +200,7 @@ This creates a comprehensive performance profile across different load condition
 The `run_auto_test.py` script supports several options:
 
 - `--config, -c`: Path to YAML or JSON configuration file (required)
-- `--output-dir, -o`: Output directory for test results (default: test_results)
+- `--output-dir, -o`: Output directory for test results (default: auto-generated timestamp under test_results/)
 - `--verbose, -v`: Enable verbose output for debugging
 - `--skip-deployment`: Skip Docker deployment (assume server is already running)
 - `--force-rerun`: Force rerun all tests, ignoring existing results
