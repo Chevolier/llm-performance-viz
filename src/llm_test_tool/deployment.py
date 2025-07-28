@@ -31,39 +31,111 @@ class VllmDeployment:
     
     def build_docker_command(self) -> list:
         """Build the docker run command from configuration"""
-        cmd = [
-            'docker', 'run',
-            '--gpus', self.deployment_config['gpu_config']['gpus'],
-            '-p', f"{self.port}:{self.port}",
-            '--name', self.container_name,
-            '-d',
-            '--shm-size', self.deployment_config['gpu_config']['shm_size']
-        ]
+        cmd = ['docker', 'run']
         
-        # Add volume mounts
-        for volume in self.deployment_config['volumes']:
-            cmd.extend(['-v', volume])
+        # Add Docker run parameters
+        docker_params = self.deployment_config.get('docker_params', {})
         
-        # Add the image
+        # Handle basic parameters
+        if 'gpus' in docker_params:
+            cmd.extend(['--gpus', str(docker_params['gpus'])])
+        
+        # Add port mapping
+        cmd.extend(['-p', f"{self.port}:{self.port}"])
+        
+        # Add container name
+        cmd.extend(['--name', self.container_name])
+        
+        # Add detached mode
+        cmd.append('-d')
+        
+        # Add any additional Docker parameters
+        for param, value in docker_params.items():
+            if param == 'gpus':
+                continue  # Already handled above
+            elif param == 'environment':
+                # Handle environment variables
+                if isinstance(value, dict):
+                    for env_key, env_value in value.items():
+                        cmd.extend(['-e', f"{env_key}={env_value}"])
+                elif isinstance(value, list):
+                    for env_var in value:
+                        cmd.extend(['-e', env_var])
+            elif param == 'ports':
+                # Handle additional port mappings
+                if isinstance(value, list):
+                    for port_mapping in value:
+                        cmd.extend(['-p', port_mapping])
+                else:
+                    cmd.extend(['-p', str(value)])
+            else:
+                # Handle any other Docker parameter (including volumes)
+                param_name = f"--{param}"
+                if isinstance(value, bool):
+                    if value:
+                        cmd.append(param_name)
+                elif isinstance(value, list):
+                    for item in value:
+                        cmd.extend([param_name, str(item)])
+                else:
+                    cmd.extend([param_name, str(value)])
+        
+        # Add legacy volume support for backward compatibility
+        if 'volumes' in self.deployment_config and 'volumes' not in docker_params:
+            for volume in self.deployment_config['volumes']:
+                cmd.extend(['-v', volume])
+        
+        # Add the Docker image
         cmd.append(self.deployment_config['docker_image'])
         
-        # Add model configuration arguments
-        model_config = self.deployment_config['model_config']
-        cmd.extend([
-            '--port', str(self.port),
-            '--model', model_config['model'],
-            '--gpu-memory-utilization', str(self.deployment_config['gpu_config']['gpu_memory_utilization']),
-            '--max-model-len', str(model_config['max_model_len'])
-        ])
+        # Add custom command if specified (e.g., for SGLang)
+        custom_command = self.deployment_config.get('command')
+        if custom_command:
+            if isinstance(custom_command, list):
+                cmd.extend(custom_command)
+            else:
+                # Split command string into parts, handling quoted arguments
+                import shlex
+                cmd.extend(shlex.split(custom_command))
         
-        if model_config.get('trust_remote_code'):
-            cmd.append('--trust-remote-code')
-        if model_config.get('enable_reasoning'):
-            cmd.append('--enable-reasoning')
-        if model_config.get('tool_call_parser'):
-            cmd.extend(['--tool-call-parser', model_config['tool_call_parser']])
-        if model_config.get('reasoning_parser'):
-            cmd.extend(['--reasoning-parser', model_config['reasoning_parser']])
+        # Add application arguments
+        app_args = self.deployment_config.get('app_args', {})
+        
+        # Add port argument (only if no custom command or if port not in custom command)
+        if not custom_command or '--port' not in str(custom_command):
+            cmd.extend(['--port', str(self.port)])
+        
+        # Add model configuration arguments
+        model_config = self.deployment_config.get('model_config', {})
+        if 'model' in model_config and (not custom_command or '--model' not in str(custom_command)):
+            cmd.extend(['--model', model_config['model']])
+        
+        # Add any other application arguments
+        for arg, value in app_args.items():
+            arg_name = f"--{arg}"
+            if isinstance(value, bool):
+                if value:
+                    cmd.append(arg_name)
+            elif isinstance(value, list):
+                for item in value:
+                    cmd.extend([arg_name, str(item)])
+            else:
+                cmd.extend([arg_name, str(value)])
+        
+        # Add legacy model config support for backward compatibility
+        for key, value in model_config.items():
+            if key == 'model':
+                continue  # Already handled above
+            
+            arg_name = f"--{key}"
+            if isinstance(value, bool):
+                if value:
+                    cmd.append(arg_name)
+            elif isinstance(value, list):
+                for item in value:
+                    cmd.extend([arg_name, str(item)])
+            else:
+                cmd.extend([arg_name, str(value)])
         
         return cmd
     
@@ -152,4 +224,17 @@ class VllmDeployment:
     
     def get_model_id(self) -> str:
         """Get the model ID from configuration"""
-        return self.deployment_config['model_config']['model']
+        # Try new universal format first
+        app_args = self.deployment_config.get('app_args', {})
+        if 'model' in app_args:
+            return app_args['model']
+        elif 'model_path' in app_args:
+            return app_args['model_path']
+        
+        # Fall back to legacy format
+        model_config = self.deployment_config.get('model_config', {})
+        if 'model' in model_config:
+            return model_config['model']
+        
+        # If no model found, return a default
+        return "unknown-model"

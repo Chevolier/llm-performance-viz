@@ -56,6 +56,33 @@ Or using the module directly:
 python -m llm_test_tool auto-test --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
 ```
 
+### Deployment Only (No Benchmarking)
+
+For cases where you only want to deploy a server without running benchmarks:
+
+```bash
+# Deploy a server
+python deploy_server.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml
+
+# Show the Docker command without executing
+python deploy_server.py --config config.yaml --show-command
+
+# Deploy without health check
+python deploy_server.py --config config.yaml --no-health-check
+
+# Check deployment status
+python deploy_server.py --config config.yaml --status
+
+# Stop a deployment
+python deploy_server.py --config config.yaml --stop
+```
+
+Or using the module directly:
+
+```bash
+python -m llm_test_tool deploy --config config.yaml
+```
+
 ### Parameters
 
 - `--processes`: Number of parallel processes (default: 2)
@@ -150,7 +177,82 @@ nfiguration
 
 ### Deployment Configuration
 
-The automated testing uses a YAML configuration file that defines both deployment and testing parameters:
+The automated testing uses a YAML configuration file with a universal parameter system that supports any Docker and application arguments:
+
+```yaml
+deployment:
+  docker_image: "vllm/vllm-openai:v0.9.2"
+  container_name: "vllm-qwen3-30b"
+  port: 8080
+  
+  # Optional: Custom command to run inside container (for non-vLLM servers)
+  # command: "python3 -m sglang.launch_server"  # String format
+  # command: ["python3", "-m", "sglang.launch_server"]  # List format
+  
+  # Universal Docker parameters - any Docker run parameter
+  docker_params:
+    gpus: "all"
+    shm-size: "747g"
+    ipc: "host"
+    volume:
+      - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+    environment:
+      CUDA_VISIBLE_DEVICES: "0,1,2,3"
+    # Any other Docker parameter: memory, cpus, ulimit, etc.
+  
+  # Universal application arguments - any server argument
+  app_args:
+    model: "Qwen/Qwen3-30B-A3B-FP8"  # or model-path for SGLang
+    gpu-memory-utilization: 0.95
+    max-model-len: 16384
+    trust-remote-code: true
+    enable-reasoning: true
+    tool-call-parser: "hermes"
+    reasoning-parser: "deepseek_r1"
+    # Any other argument: tensor-parallel-size, max-num-seqs, etc.
+
+test_matrix:
+  input_tokens: [100, 200, 400, 800, 2000, 4000, 8000]
+  output_tokens: [20, 100, 400, 1000]
+  processing_num: [1, 4, 16, 32, 64, 128]
+  random_tokens: [2, 10, 50, 100]
+
+test_config:
+  requests_per_process: 5
+  warmup_requests: 3
+  cooldown_seconds: 5
+```
+
+#### SGLang Support
+
+The system supports SGLang and other inference servers using the `command` parameter:
+
+```yaml
+deployment:
+  docker_image: "lmsysorg/sglang:v0.4.9.post4-cu126"
+  container_name: "sglang-qwen3-30b"
+  port: 8080
+  
+  # Custom command for SGLang
+  command: "python3 -m sglang.launch_server"
+  
+  docker_params:
+    gpus: "all"
+    shm-size: "32g"
+    volume:
+      - "/cache:/root/.cache"
+  
+  app_args:
+    model-path: "Qwen/Qwen3-30B-A3B-FP8"
+    tokenizer-path: "Qwen/Qwen3-30B-A3B-FP8"
+    host: "0.0.0.0"
+    tp-size: 4
+    context-length: 16384
+```
+
+#### Legacy Format Support
+
+The system maintains backward compatibility with the old format:
 
 ```yaml
 deployment:
@@ -165,22 +267,8 @@ deployment:
     model: "Qwen/Qwen3-30B-A3B-FP8"
     max_model_len: 16384
     trust_remote_code: true
-    enable_reasoning: true
-    tool_call_parser: "hermes"
-    reasoning_parser: "deepseek_r1"
   volumes:
-    - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
-
-test_matrix:
-  input_tokens: [100, 200, 400, 800, 2000, 4000, 8000]
-  output_tokens: [20, 100, 400, 1000]
-  processing_num: [1, 4, 16, 32, 64, 128]
-  random_tokens: [2, 10, 50, 100]
-
-test_config:
-  requests_per_process: 5
-  warmup_requests: 3
-  cooldown_seconds: 5
+    - "/cache:/root/.cache"
 ```
 
 ### Test Matrix
@@ -197,7 +285,7 @@ This creates a comprehensive performance profile across different load condition
 
 ## Command Line Options
 
-The `run_auto_test.py` script supports several options:
+### Testing Commands (`run_auto_test.py`)
 
 - `--config, -c`: Path to YAML or JSON configuration file (required)
 - `--output-dir, -o`: Output directory for test results (default: auto-generated timestamp under test_results/)
@@ -207,6 +295,17 @@ The `run_auto_test.py` script supports several options:
 - `--dry-run`: Show what tests would be executed without running them
 
 Use `python run_auto_test.py --help` for full usage information.
+
+### Deployment Commands (`deploy_server.py`)
+
+- `--config, -c`: Path to YAML or JSON configuration file (required)
+- `--show-command`: Show the generated Docker command without executing it
+- `--no-health-check`: Skip health check after deployment
+- `--stop`: Stop and remove the deployment instead of starting it
+- `--status`: Check the status of the deployment
+- `--verbose, -v`: Enable verbose output
+
+Use `python deploy_server.py --help` for full usage information.
 
 ## Automated Testing Features
 
