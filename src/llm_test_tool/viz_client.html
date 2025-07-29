@@ -10,51 +10,73 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 2px solid #eee;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .sidebar-header h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        
+        .copyleft {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+        
+        .copyleft a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .copyleft a:hover {
+            text-decoration: underline;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
         }
         
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
             background: white;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 20px;
+            margin-bottom: 20px;
         }
         
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #eee;
-        }
-        
-        .header h1 {
-            color: #333;
-            margin: 0;
-            font-size: 2.5em;
-        }
-        
-        .header p {
-            color: #666;
-            margin: 10px 0 0 0;
-            font-size: 1.1em;
-        }
-        
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
+
         
         .control-group {
             display: flex;
             flex-direction: column;
+            margin-bottom: 15px;
         }
         
         .control-group label {
@@ -180,23 +202,6 @@
             height: 420px;
         }
         
-        /* Custom legend styling */
-        .chart-wrapper canvas {
-            max-width: 100%;
-        }
-        
-        .chart-wrapper .chartjs-legend {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        
-        .chart-wrapper .chartjs-legend li {
-            margin: 2px 8px;
-            font-size: 11px;
-        }
-        
         .loading {
             text-align: center;
             padding: 40px;
@@ -212,71 +217,141 @@
             margin: 20px 0;
         }
         
-        .stats-panel {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 8px;
+
+        
+        /* Tree structure styles */
+        .tree-container {
             margin-bottom: 20px;
         }
         
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 1.5em;
+        .tree-title {
+            font-size: 1.2em;
             font-weight: bold;
-            color: #1976d2;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
         }
         
-        .stat-label {
-            font-size: 0.9em;
+        .tree {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .tree-node {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 2px 0;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+        
+        .tree-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tree-item.selected {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        
+        .tree-item.expandable {
+            font-weight: 600;
+        }
+        
+        .tree-toggle {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
             color: #666;
-            margin-top: 5px;
+        }
+        
+        .tree-toggle.expanded::before {
+            content: '▼';
+        }
+        
+        .tree-toggle.collapsed::before {
+            content: '▶';
+        }
+        
+        .tree-toggle.leaf::before {
+            content: '•';
+            font-size: 8px;
+        }
+        
+        .tree-children {
+            list-style: none;
+            padding-left: 24px;
+            margin: 0;
+            display: none;
+        }
+        
+        .tree-children.expanded {
+            display: block;
+        }
+        
+        .tree-label {
+            flex: 1;
+            font-size: 13px;
+        }
+        
+        .tree-count {
+            font-size: 11px;
+            color: #666;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        
+        .selected-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .selected-info strong {
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 LLM Performance Visualization</h1>
-            <p>Interactive analysis of LLM inference performance across different configurations</p>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>LLM Performance Visualization</h2>
         </div>
         
-        <div id="stats-panel" class="stats-panel" style="display: none;">
-            <div class="stats-grid" id="stats-content">
-                <!-- Stats will be populated here -->
-            </div>
+        <div class="tree-container">
+            <div class="tree-title">🚀 Runtime / Instance / Model</div>
+            <ul class="tree" id="runtime-tree">
+                <!-- Tree structure will be populated here -->
+            </ul>
         </div>
         
-        <div class="controls">
-            <div class="control-group">
-                <label for="runtime-select">Runtime:</label>
-                <select id="runtime-select">
-                    <option value="">Select Runtime...</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label for="instance-select">Instance Type:</label>
-                <select id="instance-select">
-                    <option value="">Select Instance...</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label for="model-select">Model:</label>
-                <select id="model-select">
-                    <option value="">Select Model...</option>
-                </select>
-            </div>
-            
+        <div id="selected-info" class="selected-info" style="display: none;">
+            <strong>Selected:</strong><br>
+            <span id="selected-text">None</span>
+        </div>
+        
+        <div class="tree-container">
+            <div class="tree-title">Token Configuration</div>
             <div class="control-group">
                 <label for="input-tokens">Input Tokens:</label>
                 <select id="input-tokens">
@@ -298,16 +373,24 @@
                 </select>
             </div>
             
-            <div class="button-group">
+            <div class="button-group" style="margin-top: 15px;">
                 <button class="btn btn-primary" onclick="addToComparison()">Add to Comparison</button>
                 <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
             </div>
         </div>
         
         <div id="comparison-list" class="comparison-list" style="display: none;">
-            <h3>Selected Combinations for Comparison:</h3>
+            <h3>Selected Combinations:</h3>
             <div id="comparison-items"></div>
         </div>
+        
+        <div class="copyleft">
+            <a href="https://github.com/yytdfc/llm-performance-viz" target="_blank">https://github.com/yytdfc/llm-performance-viz</a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+
         
         <div id="loading" class="loading" style="display: none;">
             Loading data...
@@ -322,9 +405,10 @@
 
     <script>
         // Global variables
-        let combinations = [];
+        let treeData = [];
         let selectedCombinations = [];
         let charts = {};
+        let currentSelection = null;
         
         // Color palette for different combinations
         const colors = [
@@ -335,155 +419,157 @@
         // Initialize the application
         async function init() {
             try {
-                await loadCombinations();
-                await loadStats();
-                setupEventListeners();
+                await loadTreeStructure();
             } catch (error) {
                 showError('Failed to initialize application: ' + error.message);
             }
         }
         
-        // Load available combinations
-        async function loadCombinations() {
-            const response = await fetch('/api/combinations');
-            combinations = await response.json();
-            
-            // Populate runtime dropdown
-            const runtimes = [...new Set(combinations.map(c => c.runtime))];
-            populateSelect('runtime-select', runtimes);
+        // Load tree structure data
+        async function loadTreeStructure() {
+            const response = await fetch('/api/tree-structure');
+            const data = await response.json();
+            treeData = data.tree;
+            renderTree();
         }
         
-        // Load overall statistics
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const stats = await response.json();
-                
-                if (stats.error) {
-                    console.warn('No stats available:', stats.error);
-                    return;
-                }
-                
-                const statsPanel = document.getElementById('stats-panel');
-                const statsContent = document.getElementById('stats-content');
-                
-                statsContent.innerHTML = `
-                    <div class="stat-item">
-                        <div class="stat-value">${stats.total_tests}</div>
-                        <div class="stat-label">Total Tests</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${stats.unique_combinations}</div>
-                        <div class="stat-label">Combinations</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${stats.performance_summary.avg_first_token_latency.toFixed(3)}s</div>
-                        <div class="stat-label">Avg First Token Latency</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${stats.performance_summary.avg_throughput.toFixed(1)}</div>
-                        <div class="stat-label">Avg Output Tokens/Sec</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${stats.performance_summary.avg_server_throughput ? stats.performance_summary.avg_server_throughput.toFixed(1) : 'N/A'}</div>
-                        <div class="stat-label">Avg Server Throughput</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${(stats.performance_summary.avg_success_rate * 100).toFixed(1)}%</div>
-                        <div class="stat-label">Avg Success Rate</div>
-                    </div>
-                `;
-                
-                statsPanel.style.display = 'block';
-            } catch (error) {
-                console.warn('Failed to load stats:', error);
+        // Render the tree structure
+        function renderTree() {
+            const treeContainer = document.getElementById('runtime-tree');
+            treeContainer.innerHTML = '';
+            
+            treeData.forEach(runtimeNode => {
+                const runtimeElement = createTreeNode(runtimeNode, 0);
+                treeContainer.appendChild(runtimeElement);
+            });
+        }
+        
+        // Create a tree node element
+        function createTreeNode(node, level) {
+            const li = document.createElement('li');
+            li.className = 'tree-node';
+            
+            const item = document.createElement('div');
+            item.className = 'tree-item';
+            if (node.children && node.children.length > 0) {
+                item.classList.add('expandable');
             }
-        }
-        
-        // Setup event listeners
-        function setupEventListeners() {
-            document.getElementById('runtime-select').addEventListener('change', onRuntimeChange);
-            document.getElementById('instance-select').addEventListener('change', onInstanceChange);
-            document.getElementById('model-select').addEventListener('change', onModelChange);
-        }
-        
-        // Handle runtime selection change
-        function onRuntimeChange() {
-            const runtime = document.getElementById('runtime-select').value;
-            const instances = [...new Set(combinations
-                .filter(c => c.runtime === runtime)
-                .map(c => c.instance_type))];
             
-            populateSelect('instance-select', instances);
-            clearSelect('model-select');
-            // Don't clear parameter selects when changing runtime
-        }
-        
-        // Handle instance type selection change
-        function onInstanceChange() {
-            const runtime = document.getElementById('runtime-select').value;
-            const instance = document.getElementById('instance-select').value;
-            
-            const models = combinations
-                .filter(c => c.runtime === runtime && c.instance_type === instance)
-                .map(c => c.model_name);
-            
-            populateSelect('model-select', models);
-            // Don't clear parameter selects when changing instance type
-        }
-        
-        // Handle model selection change
-        async function onModelChange() {
-            const runtime = document.getElementById('runtime-select').value;
-            const instance = document.getElementById('instance-select').value;
-            const model = document.getElementById('model-select').value;
-            
-            if (runtime && instance && model) {
-                try {
-                    const response = await fetch(`/api/parameters?runtime=${runtime}&instance_type=${instance}&model_name=${encodeURIComponent(model)}`);
-                    const params = await response.json();
-                    
-                    // Use helper function to preserve token selections
-                    preserveTokenSelections(params);
-                } catch (error) {
-                    showError('Failed to load parameters: ' + error.message);
-                }
+            const toggle = document.createElement('span');
+            toggle.className = 'tree-toggle';
+            if (node.children && node.children.length > 0) {
+                toggle.classList.add('collapsed');
+            } else {
+                toggle.classList.add('leaf');
             }
-        }
-        
-        // Utility function to populate select element
-        function populateSelect(selectId, options) {
-            const select = document.getElementById(selectId);
-            const currentValue = select.value;
             
-            // Clear existing options except the first one
-            select.innerHTML = select.children[0].outerHTML;
+            const label = document.createElement('span');
+            label.className = 'tree-label';
+            label.textContent = node.label;
             
-            options.forEach(option => {
-                const optionElement = document.createElement('option');
-                optionElement.value = option;
-                optionElement.textContent = option;
-                select.appendChild(optionElement);
+            const count = document.createElement('span');
+            count.className = 'tree-count';
+            count.textContent = node.count;
+            
+            item.appendChild(toggle);
+            item.appendChild(label);
+            item.appendChild(count);
+            
+            // Add click handler
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleTreeItemClick(node, item, toggle);
             });
             
-            // Restore selection if still valid (convert to string for comparison)
-            const currentValueStr = currentValue.toString();
-            const optionStrings = options.map(opt => opt.toString());
-            if (optionStrings.includes(currentValueStr)) {
-                select.value = currentValue;
+            li.appendChild(item);
+            
+            // Add children if they exist
+            if (node.children && node.children.length > 0) {
+                const childrenContainer = document.createElement('ul');
+                childrenContainer.className = 'tree-children';
+                
+                node.children.forEach(child => {
+                    const childElement = createTreeNode(child, level + 1);
+                    childrenContainer.appendChild(childElement);
+                });
+                
+                li.appendChild(childrenContainer);
+            }
+            
+            return li;
+        }
+        
+        // Handle tree item click
+        async function handleTreeItemClick(node, itemElement, toggleElement) {
+            // Handle expansion/collapse for parent nodes
+            if (node.children && node.children.length > 0) {
+                const childrenContainer = itemElement.parentElement.querySelector('.tree-children');
+                const isExpanded = childrenContainer.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    childrenContainer.classList.remove('expanded');
+                    toggleElement.classList.remove('expanded');
+                    toggleElement.classList.add('collapsed');
+                } else {
+                    childrenContainer.classList.add('expanded');
+                    toggleElement.classList.remove('collapsed');
+                    toggleElement.classList.add('expanded');
+                }
+            }
+            
+            // Handle selection for model nodes (leaf nodes)
+            if (node.type === 'model') {
+                // Clear previous selection
+                document.querySelectorAll('.tree-item.selected').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                // Set new selection
+                itemElement.classList.add('selected');
+                currentSelection = {
+                    runtime: node.runtime,
+                    instance_type: node.instance_type,
+                    model_name: node.model_name
+                };
+                
+                // Update selected info display
+                updateSelectedInfo();
+                
+                // Load token parameters for this selection
+                await loadTokenParameters();
             }
         }
         
-        // Utility function to clear select element
-        function clearSelect(selectId) {
-            const select = document.getElementById(selectId);
-            select.innerHTML = select.children[0].outerHTML;
+        // Update the selected info display
+        function updateSelectedInfo() {
+            const selectedInfo = document.getElementById('selected-info');
+            const selectedText = document.getElementById('selected-text');
+            
+            if (currentSelection) {
+                selectedText.innerHTML = `
+                    <strong>Runtime:</strong> ${currentSelection.runtime}<br>
+                    <strong>Instance:</strong> ${currentSelection.instance_type}<br>
+                    <strong>Model:</strong> ${currentSelection.model_name}
+                `;
+                selectedInfo.style.display = 'block';
+            } else {
+                selectedInfo.style.display = 'none';
+            }
         }
         
-        // Clear parameter selects (now unused, kept for compatibility)
-        function clearParameterSelects() {
-            // This function is now intentionally empty to preserve token selections
-            // when switching between runtime/instance/model combinations
+        // Load token parameters for the current selection
+        async function loadTokenParameters() {
+            if (!currentSelection) return;
+            
+            try {
+                const response = await fetch(`/api/parameters?runtime=${currentSelection.runtime}&instance_type=${currentSelection.instance_type}&model_name=${encodeURIComponent(currentSelection.model_name)}`);
+                const params = await response.json();
+                
+                // Preserve current token selections
+                preserveTokenSelections(params);
+            } catch (error) {
+                showError('Failed to load parameters: ' + error.message);
+            }
         }
         
         // Helper function to preserve token selections across model changes
@@ -506,24 +592,51 @@
             });
         }
         
+
+        
+        // Utility function to populate select element
+        function populateSelect(selectId, options) {
+            const select = document.getElementById(selectId);
+            const currentValue = select.value;
+            
+            // Clear existing options except the first one
+            select.innerHTML = select.children[0].outerHTML;
+            
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                select.appendChild(optionElement);
+            });
+            
+            // Restore selection if still valid
+            const currentValueStr = currentValue.toString();
+            const optionStrings = options.map(opt => opt.toString());
+            if (optionStrings.includes(currentValueStr)) {
+                select.value = currentValue;
+            }
+        }
+        
         // Add current selection to comparison list
         function addToComparison() {
-            const runtime = document.getElementById('runtime-select').value;
-            const instance = document.getElementById('instance-select').value;
-            const model = document.getElementById('model-select').value;
+            if (!currentSelection) {
+                showError('Please select a model from the tree first');
+                return;
+            }
+            
             const inputTokens = document.getElementById('input-tokens').value;
             const outputTokens = document.getElementById('output-tokens').value;
             const randomTokens = document.getElementById('random-tokens').value;
             
-            if (!runtime || !instance || !model || !inputTokens || !outputTokens || !randomTokens) {
-                showError('Please select all parameters before adding to comparison');
+            if (!inputTokens || !outputTokens || !randomTokens) {
+                showError('Please select all token parameters before adding to comparison');
                 return;
             }
             
             const combination = {
-                runtime,
-                instance_type: instance,
-                model_name: model,
+                runtime: currentSelection.runtime,
+                instance_type: currentSelection.instance_type,
+                model_name: currentSelection.model_name,
                 input_tokens: parseInt(inputTokens),
                 output_tokens: parseInt(outputTokens),
                 random_tokens: parseInt(randomTokens)
@@ -672,7 +785,7 @@
                 }));
                 
                 // Create a more readable label with full information
-                const runtimeName = combo.runtime; // Use full runtime name
+                const runtimeName = combo.runtime;
                 
                 // Extract instance size (4x, 48x)
                 const instanceSize = combo.instance_type.includes('4xlarge') ? '4x' : 
@@ -707,10 +820,6 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: title
-                        },
                         legend: {
                             position: 'top',
                             labels: {
@@ -741,18 +850,9 @@
                             // Set Y-axis range for success rate chart
                             ...(metric === 'success_rate' && {
                                 min: 0,
-                                max: 100,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                }
+                                max: 100
                             })
                         }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
                     }
                 }
             });
@@ -760,7 +860,11 @@
         
         // Clear all charts
         function clearCharts() {
-            Object.values(charts).forEach(chart => chart.destroy());
+            Object.values(charts).forEach(chart => {
+                if (chart) {
+                    chart.destroy();
+                }
+            });
             charts = {};
             document.getElementById('charts-container').innerHTML = '';
         }

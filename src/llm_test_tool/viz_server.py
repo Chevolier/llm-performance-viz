@@ -258,6 +258,70 @@ async def get_comparison_data(request: ComparisonRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/tree-structure")
+async def get_tree_structure():
+    """Get hierarchical tree structure of Runtime -> Instance Type -> Model"""
+    if data_provider.df is None or data_provider.df.empty:
+        return {"tree": []}
+    
+    df = data_provider.df
+    tree = {}
+    
+    # Build hierarchical structure
+    for _, row in df.iterrows():
+        runtime = row['runtime']
+        instance_type = row['instance_type']
+        model_name = row['model_name']
+        
+        if runtime not in tree:
+            tree[runtime] = {}
+        
+        if instance_type not in tree[runtime]:
+            tree[runtime][instance_type] = set()
+        
+        tree[runtime][instance_type].add(model_name)
+    
+    # Convert to list format with counts
+    result = []
+    for runtime in sorted(tree.keys()):
+        runtime_node = {
+            'id': runtime,
+            'label': runtime,
+            'type': 'runtime',
+            'count': len(df[df['runtime'] == runtime]),
+            'children': []
+        }
+        
+        for instance_type in sorted(tree[runtime].keys()):
+            instance_node = {
+                'id': f"{runtime}--{instance_type}",
+                'label': instance_type,
+                'type': 'instance_type',
+                'count': len(df[(df['runtime'] == runtime) & (df['instance_type'] == instance_type)]),
+                'children': []
+            }
+            
+            for model_name in sorted(tree[runtime][instance_type]):
+                model_node = {
+                    'id': f"{runtime}--{instance_type}--{model_name}",
+                    'label': model_name,
+                    'type': 'model',
+                    'count': len(df[(df['runtime'] == runtime) & 
+                                   (df['instance_type'] == instance_type) & 
+                                   (df['model_name'] == model_name)]),
+                    'runtime': runtime,
+                    'instance_type': instance_type,
+                    'model_name': model_name
+                }
+                instance_node['children'].append(model_node)
+            
+            runtime_node['children'].append(instance_node)
+        
+        result.append(runtime_node)
+    
+    return {"tree": result}
+
+
 @app.get("/api/stats")
 async def get_stats():
     """Get overall statistics about the dataset"""

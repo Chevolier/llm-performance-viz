@@ -15,6 +15,9 @@ run_test() {
     local instance_type=$(echo "$config_path" | cut -d'/' -f3)
     local model_name=$(echo "$config_path" | cut -d'/' -f4)
     
+    # Strip .yaml suffix from model name
+    model_name="${model_name%.yaml}"
+    
     # Generate output directory in your format
     local output_dir="archive_results/${vllm_version}--${instance_type}--${model_name}"
     
@@ -23,7 +26,7 @@ run_test() {
     echo "Config: $config_path"
     echo "Output: $output_dir"
     echo "=========================================="
-    
+    exit
     # Run the test
     uv run run_auto_test.py --config "$config_path" --output-dir "$output_dir" --skip-deployment
     
@@ -47,7 +50,7 @@ echo ""
 
 
 # Add more model tests here as needed
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/NewModel.yaml" "NewModel"
+# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/NewModel.yaml"
 
 # run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-14B-FP8.yaml" "Qwen3-14B-FP8"
 # run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-4B-FP8.yaml" "Qwen3-4B-FP8"
