@@ -83,6 +83,19 @@ Or using the module directly:
 python -m llm_test_tool deploy --config config.yaml
 ```
 
+### Performance Visualization
+
+For interactive performance analysis and comparison:
+
+```bash
+# Start the visualization server
+python start_viz_server.py
+# or
+python -m llm_test_tool viz
+
+# Access the web interface at: http://localhost:8000
+```
+
 ### Parameters
 
 - `--processes`: Number of parallel processes (default: 2)
