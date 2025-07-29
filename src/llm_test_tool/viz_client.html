@@ -98,6 +98,63 @@
             box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
         }
         
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+        
+        .slider-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+        
+        .slider:hover {
+            opacity: 1;
+        }
+        
+        .slider:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
         .button-group {
             display: flex;
             gap: 10px;
@@ -352,25 +409,19 @@
         
         <div class="tree-container">
             <div class="tree-title">Token Configuration</div>
-            <div class="control-group">
-                <label for="input-tokens">Input Tokens:</label>
-                <select id="input-tokens">
-                    <option value="">Select Input Tokens...</option>
-                </select>
+            <div class="slider-group">
+                <label for="input-tokens">Input Tokens: <span id="input-tokens-value">-</span></label>
+                <input type="range" id="input-tokens" class="slider" min="0" max="1000" value="0" disabled>
             </div>
             
-            <div class="control-group">
-                <label for="output-tokens">Output Tokens:</label>
-                <select id="output-tokens">
-                    <option value="">Select Output Tokens...</option>
-                </select>
+            <div class="slider-group">
+                <label for="output-tokens">Output Tokens: <span id="output-tokens-value">-</span></label>
+                <input type="range" id="output-tokens" class="slider" min="0" max="1000" value="0" disabled>
             </div>
             
-            <div class="control-group">
-                <label for="random-tokens">Random Tokens:</label>
-                <select id="random-tokens">
-                    <option value="">Select Random Tokens...</option>
-                </select>
+            <div class="slider-group">
+                <label for="random-tokens">Random Tokens: <span id="random-tokens-value">-</span></label>
+                <input type="range" id="random-tokens" class="slider" min="0" max="1000" value="0" disabled>
             </div>
             
             <div class="button-group" style="margin-top: 15px;">
@@ -574,22 +625,170 @@
         
         // Helper function to preserve token selections across model changes
         function preserveTokenSelections(newParams) {
-            const tokenSelects = ['input-tokens', 'output-tokens', 'random-tokens'];
-            const paramKeys = ['input_tokens', 'output_tokens', 'random_tokens'];
+            const sliders = [
+                { id: 'input-tokens', key: 'input_tokens', valueId: 'input-tokens-value' },
+                { id: 'output-tokens', key: 'output_tokens', valueId: 'output-tokens-value' },
+                { id: 'random-tokens', key: 'random_tokens', valueId: 'random-tokens-value' }
+            ];
             
-            tokenSelects.forEach((selectId, index) => {
-                const select = document.getElementById(selectId);
-                const currentValue = select.value;
-                const paramKey = paramKeys[index];
+            sliders.forEach(slider => {
+                const sliderElement = document.getElementById(slider.id);
+                const valueElement = document.getElementById(slider.valueId);
+                const values = newParams[slider.key];
                 
-                // Update options
-                populateSelect(selectId, newParams[paramKey]);
-                
-                // Try to restore the previous selection if it exists in new options
-                if (currentValue && newParams[paramKey].includes(parseInt(currentValue))) {
-                    select.value = currentValue;
+                if (values && values.length > 0) {
+                    const minVal = Math.min(...values);
+                    const maxVal = Math.max(...values);
+                    
+                    // Enable slider and set range
+                    sliderElement.disabled = false;
+                    sliderElement.min = minVal;
+                    sliderElement.max = maxVal;
+                    
+                    // Try to preserve current value if it's within range
+                    const currentValue = parseInt(sliderElement.value);
+                    if (currentValue >= minVal && currentValue <= maxVal && values.includes(currentValue)) {
+                        sliderElement.value = currentValue;
+                    } else {
+                        // Set to first available value
+                        sliderElement.value = values[0];
+                    }
+                    
+                    // Update display value
+                    valueElement.textContent = sliderElement.value;
+                    
+                    // Store available values for validation
+                    sliderElement.availableValues = values;
+                    
+                    // Store original values for random tokens constraint logic
+                    if (slider.id === 'random-tokens') {
+                        sliderElement.originalAvailableValues = [...values];
+                    }
+                } else {
+                    // Disable slider if no values available
+                    sliderElement.disabled = true;
+                    sliderElement.value = 0;
+                    valueElement.textContent = '-';
+                    sliderElement.availableValues = [];
                 }
             });
+            
+            // Set up event listeners for sliders
+            setupSliderEventListeners();
+            
+            // Update random tokens max based on current input tokens
+            updateRandomTokensMax();
+        }
+        
+        // Setup event listeners for sliders
+        function setupSliderEventListeners() {
+            const inputTokensSlider = document.getElementById('input-tokens');
+            const outputTokensSlider = document.getElementById('output-tokens');
+            const randomTokensSlider = document.getElementById('random-tokens');
+            
+            // Remove existing event listeners to avoid duplicates
+            inputTokensSlider.oninput = null;
+            outputTokensSlider.oninput = null;
+            randomTokensSlider.oninput = null;
+            
+            // Input tokens slider
+            inputTokensSlider.addEventListener('input', function() {
+                if (this.availableValues && this.availableValues.length > 0) {
+                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    this.value = value;
+                    document.getElementById('input-tokens-value').textContent = value;
+                    updateRandomTokensMax();
+                }
+            });
+            
+            // Output tokens slider
+            outputTokensSlider.addEventListener('input', function() {
+                if (this.availableValues && this.availableValues.length > 0) {
+                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    this.value = value;
+                    document.getElementById('output-tokens-value').textContent = value;
+                }
+            });
+            
+            // Random tokens slider
+            randomTokensSlider.addEventListener('input', function() {
+                if (this.availableValues && this.availableValues.length > 0) {
+                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    this.value = value;
+                    document.getElementById('random-tokens-value').textContent = value;
+                }
+            });
+        }
+        
+        // Find closest available value from the allowed values
+        function findClosestAvailableValue(targetValue, availableValues) {
+            if (!availableValues || availableValues.length === 0) return targetValue;
+            
+            const target = parseInt(targetValue);
+            return availableValues.reduce((prev, curr) => {
+                return Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev;
+            });
+        }
+        
+        // Update random tokens max value based on input tokens
+        function updateRandomTokensMax() {
+            const inputTokensSlider = document.getElementById('input-tokens');
+            const randomTokensSlider = document.getElementById('random-tokens');
+            const randomTokensValue = document.getElementById('random-tokens-value');
+            
+            if (!inputTokensSlider.disabled && !randomTokensSlider.disabled) {
+                const inputTokensValue = parseInt(inputTokensSlider.value);
+                
+                // Get original available values (stored when model was selected)
+                const originalAvailableValues = randomTokensSlider.originalAvailableValues || randomTokensSlider.availableValues || [];
+                
+                // Filter available values to be <= input tokens
+                const filteredValues = originalAvailableValues.filter(val => val <= inputTokensValue);
+                
+                if (filteredValues.length > 0) {
+                    const newMin = Math.min(...filteredValues);
+                    const newMax = Math.max(...filteredValues);
+                    
+                    // Update slider range
+                    randomTokensSlider.min = newMin;
+                    randomTokensSlider.max = newMax;
+                    randomTokensSlider.disabled = false;
+                    
+                    // Update available values for this constraint
+                    randomTokensSlider.availableValues = filteredValues;
+                    
+                    // Adjust current value if it needs to be clipped or is invalid
+                    const currentValue = parseInt(randomTokensSlider.value);
+                    let needsAdjustment = false;
+                    let newValue = currentValue;
+                    
+                    // Check if current value exceeds input tokens constraint
+                    if (currentValue > inputTokensValue) {
+                        // Clip to the largest available value that's <= input tokens
+                        newValue = Math.max(...filteredValues);
+                        needsAdjustment = true;
+                    }
+                    // Check if current value is outside the valid range
+                    else if (currentValue > newMax || currentValue < newMin) {
+                        newValue = Math.min(Math.max(currentValue, newMin), newMax);
+                        needsAdjustment = true;
+                    }
+                    // Check if current value is not in the available values list
+                    else if (!filteredValues.includes(currentValue)) {
+                        newValue = findClosestAvailableValue(currentValue, filteredValues);
+                        needsAdjustment = true;
+                    }
+                    
+                    if (needsAdjustment) {
+                        randomTokensSlider.value = newValue;
+                        randomTokensValue.textContent = newValue;
+                    }
+                } else {
+                    // No valid values, disable random tokens
+                    randomTokensSlider.disabled = true;
+                    randomTokensValue.textContent = '-';
+                }
+            }
         }
         
 
@@ -624,12 +823,21 @@
                 return;
             }
             
-            const inputTokens = document.getElementById('input-tokens').value;
-            const outputTokens = document.getElementById('output-tokens').value;
-            const randomTokens = document.getElementById('random-tokens').value;
+            const inputTokensSlider = document.getElementById('input-tokens');
+            const outputTokensSlider = document.getElementById('output-tokens');
+            const randomTokensSlider = document.getElementById('random-tokens');
             
-            if (!inputTokens || !outputTokens || !randomTokens) {
-                showError('Please select all token parameters before adding to comparison');
+            if (inputTokensSlider.disabled || outputTokensSlider.disabled || randomTokensSlider.disabled) {
+                showError('Please ensure all token parameters are configured');
+                return;
+            }
+            
+            const inputTokens = parseInt(inputTokensSlider.value);
+            const outputTokens = parseInt(outputTokensSlider.value);
+            const randomTokens = parseInt(randomTokensSlider.value);
+            
+            if (!inputTokens || !outputTokens || randomTokens === undefined) {
+                showError('Please configure all token parameters before adding to comparison');
                 return;
             }
             
@@ -637,9 +845,9 @@
                 runtime: currentSelection.runtime,
                 instance_type: currentSelection.instance_type,
                 model_name: currentSelection.model_name,
-                input_tokens: parseInt(inputTokens),
-                output_tokens: parseInt(outputTokens),
-                random_tokens: parseInt(randomTokens)
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                random_tokens: randomTokens
             };
             
             // Check if combination already exists
@@ -797,8 +1005,8 @@
                 // Keep full model name
                 const modelName = combo.model_name;
                 
-                // Include all token information: input→output(rand)
-                const tokenInfo = `${combo.input_tokens}→${combo.output_tokens}(${combo.random_tokens})`;
+                // Include all token information: input(rand)→output
+                const tokenInfo = `${combo.input_tokens}(${combo.random_tokens})→${combo.output_tokens}`;
                 
                 const label = `${runtimeName}/${instanceInfo}/${modelName} ${tokenInfo}`;
                 

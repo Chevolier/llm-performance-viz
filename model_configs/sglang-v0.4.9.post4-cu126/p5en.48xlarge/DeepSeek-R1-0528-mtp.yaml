@@ -6,10 +6,10 @@ deployment:
   # Universal Docker parameters
   docker_params:
     gpus: "all"
-    shm-size: "747g"
+    shm-size: "1000g"
     ipc: "host"
     network: "host"
-    volumes:
+    volume:
       - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
       - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
   command: "python3 -m sglang.launch_server"

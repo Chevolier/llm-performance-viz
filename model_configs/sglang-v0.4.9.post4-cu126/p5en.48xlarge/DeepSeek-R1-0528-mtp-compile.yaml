@@ -6,7 +6,7 @@ deployment:
   # Universal Docker parameters
   docker_params:
     gpus: "all"
-    shm-size: "747g"
+    shm-size: "1000g"
     ipc: "host"
     network: "host"
     volume:

@@ -26,9 +26,9 @@ run_test() {
     echo "Config: $config_path"
     echo "Output: $output_dir"
     echo "=========================================="
-    exit
+    # exit
     # Run the test
-    uv run run_auto_test.py --config "$config_path" --output-dir "$output_dir" --skip-deployment
+    uv run run_auto_test.py --config "$config_path" --output-dir "$output_dir" # --skip-deployment
     
     echo "✓ Completed: $model_name"
     echo ""
@@ -61,8 +61,9 @@ echo ""
 # run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp"
 # run_test "model_configs/v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp-compile"
 
-# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
+run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml"
 
 
 
