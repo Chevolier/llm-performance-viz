@@ -6,18 +6,20 @@ deployment:
   # Universal Docker parameters
   docker_params:
     gpus: "all"
-    shm_size: "747g"
+    shm-size: "1000g"
     ipc: "host"
     network: "host"
-    volumes:
+    volume:
       - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+      - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
   command: "python3 -m sglang.launch_server"
   # Universal application arguments
   app_args:
     host: "0.0.0.0"
-    model-path: "Qwen/Qwen3-30B-A3B-FP8"
+    model-path: "model/Qwen/Qwen3-30B-A3B-FP8"
     trust-remote-code: true
-    mem-fraction-static: 0.95
+    tp-size: 1
+    mem-fraction-static: 0.90
     tool-call-parser: "qwen25"
     reasoning-parser: "deepseek-r1"
 

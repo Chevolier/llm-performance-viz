@@ -150,6 +150,17 @@ class VllmDeployment:
         except subprocess.CalledProcessError:
             return False
     
+    def container_exists(self) -> bool:
+        """Check if the container exists (running or stopped)"""
+        try:
+            result = subprocess.run(
+                ['docker', 'ps', '-a', '--filter', f'name={self.container_name}', '--format', '{{.Names}}'],
+                capture_output=True, text=True, check=True
+            )
+            return self.container_name in result.stdout
+        except subprocess.CalledProcessError:
+            return False
+    
     def stop_container(self) -> bool:
         """Stop and remove existing container"""
         try:
@@ -167,10 +178,20 @@ class VllmDeployment:
     
     def start_container(self) -> bool:
         """Start the vLLM container"""
-        # Stop existing container if running
+        # Check if container is already running
         if self.is_container_running():
             print(f"Container {self.container_name} is already running. Stopping it first...")
             if not self.stop_container():
+                return False
+        # Check if container exists but is not running
+        elif self.container_exists():
+            print(f"Container {self.container_name} exists but is not running. Removing it first...")
+            try:
+                subprocess.run(['docker', 'rm', self.container_name], 
+                             capture_output=True, check=True)
+                print(f"Removed stopped container: {self.container_name}")
+            except subprocess.CalledProcessError as e:
+                print(f"Error removing stopped container: {e}")
                 return False
         
         # Build and run the docker command

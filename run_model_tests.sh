@@ -5,6 +5,9 @@
 
 set -e
 
+ec2_instance_type=`ec2metadata --instance-type`
+echo Current instance type: $ec2_instance_type
+
 # Function to run test for a specific config
 run_test() {
     local config_path="$1"
@@ -15,6 +18,13 @@ run_test() {
     local instance_type=$(echo "$config_path" | cut -d'/' -f3)
     local model_name=$(echo "$config_path" | cut -d'/' -f4)
     
+    # Check if instance type matches current EC2 instance
+    if [ "$instance_type" != "$ec2_instance_type" ]; then
+        echo "⏭️  Skipping: $model_name (requires $instance_type, current: $ec2_instance_type)"
+        return 0
+    fi
+    
+
     # Strip .yaml suffix from model name
     model_name="${model_name%.yaml}"
     
@@ -62,8 +72,11 @@ echo ""
 # run_test "model_configs/v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp-compile"
 
 # run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
-run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+
+# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4-cu126/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 
 
 
