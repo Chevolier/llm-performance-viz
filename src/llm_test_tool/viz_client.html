@@ -553,6 +553,12 @@
                 <button class="btn btn-primary" onclick="addToComparison()">Add to Comparison</button>
                 <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
             </div>
+            
+            <div class="button-group" style="margin-top: 10px;">
+                <button class="btn btn-success" onclick="copyShareableUrl()" title="Copy shareable URL to clipboard">
+                    📋 Share URL
+                </button>
+            </div>
         </div>
 
         <div id="comparison-list" class="comparison-list" style="display: none;">
@@ -598,6 +604,11 @@
             try {
                 await loadTreeStructure();
                 setupFilterEventListeners();
+                
+                // Restore state from URL parameters after tree is loaded
+                setTimeout(() => {
+                    restoreStateFromUrl();
+                }, 500);
             } catch (error) {
                 showError('Failed to initialize application: ' + error.message);
             }
@@ -822,8 +833,18 @@
                     if (currentValue >= minVal && currentValue <= maxVal && values.includes(currentValue)) {
                         sliderElement.value = currentValue;
                     } else {
-                        // Set to first available value
-                        sliderElement.value = values[0];
+                        // Set to preferred default values if available, otherwise first available value
+                        let defaultValue;
+                        if (slider.id === 'input-tokens') {
+                            defaultValue = values.includes(1600) ? 1600 : values[0];
+                        } else if (slider.id === 'output-tokens') {
+                            defaultValue = values.includes(400) ? 400 : values[0];
+                        } else if (slider.id === 'random-tokens') {
+                            defaultValue = values.includes(1600) ? 1600 : values[0];
+                        } else {
+                            defaultValue = values[0];
+                        }
+                        sliderElement.value = defaultValue;
                     }
 
                     // Update display value
@@ -1042,6 +1063,9 @@
 
             // Auto-generate charts when combination is added
             generateCharts();
+            
+            // Update URL with new state
+            updateUrlWithState();
         }
 
         // Update the comparison list display
@@ -1080,6 +1104,9 @@
             } else {
                 clearCharts();
             }
+            
+            // Update URL with new state
+            updateUrlWithState();
         }
 
         // Clear all combinations
@@ -1087,6 +1114,9 @@
             selectedCombinations = [];
             updateComparisonList();
             clearCharts();
+            
+            // Update URL with new state
+            updateUrlWithState();
         }
 
         // Generate charts for selected combinations
@@ -1286,6 +1316,9 @@
                 } else {
                     filterClear.style.display = 'none';
                 }
+                
+                // Update URL with filter state
+                updateUrlWithState();
             });
 
             // Clear button event
@@ -1294,6 +1327,9 @@
                 filterTree('');
                 this.style.display = 'none';
                 filterInput.focus();
+                
+                // Update URL with cleared filter
+                updateUrlWithState();
             });
 
             // Refresh button event
@@ -1371,6 +1407,138 @@
                     node.classList.add('filtered-hidden');
                 }
             });
+        }
+
+        // URL State Management
+        function updateUrlWithState() {
+            const url = new URL(window.location);
+            
+            // Clear existing parameters
+            url.searchParams.delete('combinations');
+            url.searchParams.delete('filter');
+            
+            // Add current combinations
+            if (selectedCombinations.length > 0) {
+                const combinationsData = selectedCombinations.map(combo => ({
+                    r: combo.runtime,
+                    i: combo.instance_type,
+                    m: combo.model_name,
+                    it: combo.input_tokens,
+                    ot: combo.output_tokens,
+                    rt: combo.random_tokens
+                }));
+                url.searchParams.set('combinations', btoa(JSON.stringify(combinationsData)));
+            }
+            
+            // Add current filter
+            const filterInput = document.getElementById('tree-filter');
+            if (filterInput && filterInput.value.trim()) {
+                url.searchParams.set('filter', filterInput.value.trim());
+            }
+            
+            // Update URL without page reload
+            window.history.replaceState({}, '', url);
+        }
+        
+        function restoreStateFromUrl() {
+            const url = new URL(window.location);
+            
+            // Restore filter
+            const filter = url.searchParams.get('filter');
+            if (filter) {
+                const filterInput = document.getElementById('tree-filter');
+                if (filterInput) {
+                    filterInput.value = filter;
+                    filterTree(filter);
+                    document.getElementById('filter-clear').style.display = 'flex';
+                }
+            }
+            
+            // Restore combinations
+            const combinationsParam = url.searchParams.get('combinations');
+            if (combinationsParam) {
+                try {
+                    const combinationsData = JSON.parse(atob(combinationsParam));
+                    
+                    // Convert back to full format
+                    const combinations = combinationsData.map(combo => ({
+                        runtime: combo.r,
+                        instance_type: combo.i,
+                        model_name: combo.m,
+                        input_tokens: combo.it,
+                        output_tokens: combo.ot,
+                        random_tokens: combo.rt
+                    }));
+                    
+                    selectedCombinations = combinations;
+                    updateComparisonList();
+                    
+                    // Generate charts if combinations exist
+                    if (selectedCombinations.length > 0) {
+                        generateCharts();
+                    }
+                } catch (error) {
+                    console.warn('Failed to restore combinations from URL:', error);
+                }
+            }
+        }
+        
+        function copyShareableUrl() {
+            updateUrlWithState();
+            const url = window.location.href;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showSuccess('Shareable URL copied to clipboard!');
+                }).catch(() => {
+                    fallbackCopyUrl(url);
+                });
+            } else {
+                fallbackCopyUrl(url);
+            }
+        }
+        
+        function fallbackCopyUrl(url) {
+            // Fallback for older browsers or non-HTTPS
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showSuccess('Shareable URL copied to clipboard!');
+            } catch (err) {
+                showError('Failed to copy URL. Please copy manually: ' + url);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #d4edda;
+                color: #155724;
+                padding: 15px;
+                border-radius: 4px;
+                border: 1px solid #c3e6cb;
+                z-index: 1000;
+                max-width: 300px;
+            `;
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+            
+            setTimeout(() => {
+                document.body.removeChild(successDiv);
+            }, 3000);
         }
 
         // Initialize the application when the page loads
