@@ -289,9 +289,7 @@
             font-size: 1.2em;
             font-weight: bold;
             color: #333;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+            margin: 0;
         }
 
         .tree-filter {
@@ -447,16 +445,14 @@
         .selected-info strong {
             color: #333;
         }
-        
+
         .tree-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
         }
-        
+
         .refresh-btn {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -470,35 +466,40 @@
             min-width: 32px;
             height: 32px;
         }
-        
+
         .refresh-btn:hover {
             background: #e9ecef;
             border-color: #adb5bd;
         }
-        
+
         .refresh-btn:active {
             background: #dee2e6;
             transform: scale(0.95);
         }
-        
+
         .refresh-btn.loading {
             opacity: 0.6;
             cursor: not-allowed;
         }
-        
+
         .refresh-icon {
             font-size: 16px;
             color: #495057;
             transition: transform 0.3s;
         }
-        
+
         .refresh-btn.loading .refresh-icon {
             animation: spin 1s linear infinite;
         }
-        
+
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -602,34 +603,40 @@
             }
         }
 
+        // Get API base path
+        function getApiUrl(endpoint) {
+            const basePath = window.API_BASE_PATH || '';
+            return `${basePath}${endpoint}`;
+        }
+
         // Load tree structure data
         async function loadTreeStructure() {
-            const response = await fetch('/api/tree-structure');
+            const response = await fetch(getApiUrl('/api/tree-structure'));
             const data = await response.json();
             treeData = data.tree;
             renderTree();
         }
-        
+
         // Refresh tree data from disk
         async function refreshTreeData() {
             const refreshBtn = document.getElementById('refresh-tree');
             const refreshIcon = refreshBtn.querySelector('.refresh-icon');
-            
+
             try {
                 // Show loading state
                 refreshBtn.classList.add('loading');
                 refreshBtn.disabled = true;
-                
+
                 // Clear current selection and comparisons
                 currentSelection = null;
                 selectedCombinations = [];
                 updateSelectedInfo();
                 updateComparisonList();
                 clearCharts();
-                
+
                 // Reload tree structure
                 await loadTreeStructure();
-                
+
                 // Clear any active filter
                 const filterInput = document.getElementById('tree-filter');
                 if (filterInput.value) {
@@ -637,9 +644,9 @@
                     filterTree('');
                     document.getElementById('filter-clear').style.display = 'none';
                 }
-                
+
                 console.log('Tree data refreshed successfully');
-                
+
             } catch (error) {
                 showError('Failed to refresh tree data: ' + error.message);
             } finally {
@@ -778,7 +785,7 @@
             if (!currentSelection) return;
 
             try {
-                const response = await fetch(`/api/parameters?runtime=${currentSelection.runtime}&instance_type=${currentSelection.instance_type}&model_name=${encodeURIComponent(currentSelection.model_name)}`);
+                const response = await fetch(getApiUrl(`/api/parameters?runtime=${currentSelection.runtime}&instance_type=${currentSelection.instance_type}&model_name=${encodeURIComponent(currentSelection.model_name)}`));
                 const params = await response.json();
 
                 // Preserve current token selections
@@ -1093,7 +1100,7 @@
             clearError();
 
             try {
-                const response = await fetch('/api/comparison-data', {
+                const response = await fetch(getApiUrl('/api/comparison-data'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

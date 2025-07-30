@@ -74,8 +74,10 @@ echo ""
 
 # run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
 # run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
-run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+
+# g6e.4xlarge
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 
 # --skip-deployment
 # run_test "model_configs/sglang-blackwell-0730/p6-b200.48xlarge/DeepSeek-R1-0528.yaml"

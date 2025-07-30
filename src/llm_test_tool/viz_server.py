@@ -15,7 +15,14 @@ from pydantic import BaseModel
 import pandas as pd
 import uvicorn
 
-app = FastAPI(title="LLM Performance Visualization API", version="1.0.0")
+# Get root path from environment variable if set
+root_path = os.environ.get('ROOT_PATH', '')
+
+app = FastAPI(
+    title="LLM Performance Visualization API", 
+    version="1.0.0",
+    root_path=root_path
+)
 
 
 class ResultsDataProvider:
@@ -185,11 +192,27 @@ data_provider = ResultsDataProvider()
 
 @app.get("/")
 async def index():
-    """Serve the main HTML page"""
+    """Serve the main HTML page with root path injection"""
     # Get the directory where this script is located
     current_dir = Path(__file__).parent
     html_file = current_dir / 'viz_client.html'
-    return FileResponse(str(html_file))
+    
+    # Read the HTML file and inject the root path
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    # Inject the root path as a JavaScript variable
+    root_path_script = f"""
+    <script>
+        window.API_BASE_PATH = '{root_path}';
+    </script>
+    """
+    
+    # Insert the script before the closing </head> tag
+    html_content = html_content.replace('</head>', f'{root_path_script}</head>')
+    
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html_content)
 
 
 @app.get("/api/combinations", response_model=List[CombinationInfo])
