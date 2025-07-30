@@ -11,7 +11,6 @@ echo Current instance type: $ec2_instance_type
 # Function to run test for a specific config
 run_test() {
     local config_path="$1"
-    # local model_name="$2"
     
     # Extract vllm version and instance type from path
     local vllm_version=$(echo "$config_path" | cut -d'/' -f2)
@@ -38,7 +37,7 @@ run_test() {
     echo "=========================================="
     # exit
     # Run the test
-    uv run run_auto_test.py --config "$config_path" --output-dir "$output_dir" # --skip-deployment
+    uv run run_auto_test.py --config "$config_path" --output-dir "$output_dir" $2
     
     echo "✓ Completed: $model_name"
     echo ""
@@ -69,15 +68,28 @@ echo ""
 # run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-default"
 
 # run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp"
-# run_test "model_configs/v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp-compile"
+# run_test "model_configs/v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp-compile"
 
-# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
 
-# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-# run_test "model_configs/sglang-v0.4.9.post4-cu126/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
 run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
-run_test "model_configs/sglang-v0.4.9.post4-cu126/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 
+# --skip-deployment
+# run_test "model_configs/sglang-blackwell-0730/p6-b200.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p6-b200.48xlarge/DeepSeek-R1-0528.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4/p6-b200.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+
+# run_test "model_configs/sglang-v0.4.9.post6/p6-b200.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+
+# run_test "model_configs/vllm-v0.9.2/p6-b200.48xlarge/DeepSeek-R1-0528.yaml" # --skip-deployment
+
+# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B.yaml"
 
 
 

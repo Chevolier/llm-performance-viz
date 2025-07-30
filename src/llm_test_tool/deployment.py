@@ -207,7 +207,7 @@ class VllmDeployment:
             print(f"stderr: {e.stderr}")
             return False
     
-    def wait_for_health(self, timeout: int = 300) -> bool:
+    def wait_for_health(self, timeout: int = 1200) -> bool:
         """Wait for the server to become healthy"""
         health_url = f"http://localhost:{self.port}/health"
         print(f"Waiting for server to become healthy at {health_url}...")

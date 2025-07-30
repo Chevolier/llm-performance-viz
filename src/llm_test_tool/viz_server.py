@@ -60,7 +60,7 @@ class ResultsDataProvider:
     def load_all_results(self):
         """Load all test results from the archive directory"""
         print(f"Loading results from {self.results_dir}...")
-        
+        self.data = []
         for result_dir in self.results_dir.iterdir():
             if not result_dir.is_dir():
                 continue
@@ -261,6 +261,9 @@ async def get_comparison_data(request: ComparisonRequest):
 @app.get("/api/tree-structure")
 async def get_tree_structure():
     """Get hierarchical tree structure of Runtime -> Instance Type -> Model"""
+    # Reload all results from disk to get the latest data
+    data_provider.load_all_results()
+    
     if data_provider.df is None or data_provider.df.empty:
         return {"tree": []}
     
