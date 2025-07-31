@@ -222,38 +222,7 @@
             background-color: #1e7e34;
         }
 
-        .comparison-list {
-            margin: 20px 0;
-            padding: 15px;
-            background: #e9ecef;
-            border-radius: 4px;
-        }
 
-        .comparison-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .comparison-item:last-child {
-            border-bottom: none;
-        }
-
-        .remove-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .remove-btn:hover {
-            background: #c82333;
-        }
 
         .charts-container {
             display: grid;
@@ -416,13 +385,17 @@
         }
 
         .tree-toggle.leaf::before {
-            content: '•';
-            font-size: 8px;
+            content: '';
+        }
+
+        .tree-toggle.leaf {
+            width: 0;
+            margin-right: 0;
         }
 
         .tree-children {
             list-style: none;
-            padding-left: 24px;
+            padding-left: 16px;
             margin: 0;
             display: none;
         }
@@ -434,6 +407,18 @@
         .tree-label {
             flex: 1;
             font-size: 13px;
+        }
+
+        .tree-checkbox {
+            margin-left: 8px;
+            margin-right: 8px;
+            cursor: pointer;
+            transform: scale(1.1);
+        }
+
+        .tree-checkbox:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
 
         .tree-count {
@@ -464,6 +449,39 @@
 
         .selected-info strong {
             color: #333;
+        }
+
+        .comparison-list {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .comparison-item:last-child {
+            border-bottom: none;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .remove-btn:hover {
+            background: #c82333;
         }
 
         .tree-header {
@@ -534,21 +552,23 @@
             <div class="tree-title">Token Configuration</div>
             <div class="slider-group">
                 <label for="input-tokens">Input Tokens: <span id="input-tokens-value">1600</span></label>
-                <input type="range" id="input-tokens" class="slider" min="0" max="2000" value="1600" disabled>
+                <input type="range" id="input-tokens" class="slider" min="100" max="4000" value="1600">
             </div>
 
             <div class="slider-group">
                 <label for="output-tokens">Output Tokens: <span id="output-tokens-value">400</span></label>
-                <input type="range" id="output-tokens" class="slider" min="0" max="1000" value="400" disabled>
+                <input type="range" id="output-tokens" class="slider" min="50" max="2000" value="400">
             </div>
 
             <div class="slider-group">
                 <label for="random-tokens">Random Tokens: <span id="random-tokens-value">1600</span></label>
-                <input type="range" id="random-tokens" class="slider" min="0" max="2000" value="1600" disabled>
+                <input type="range" id="random-tokens" class="slider" min="100" max="4000" value="1600">
             </div>
 
             <div class="button-group" style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="addToComparison()">Add to Chart</button>
+                <button class="btn btn-primary" onclick="exportData()" title="Download raw data as JSON">
+                    Export Data
+                </button>
                 <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
                 <button class="btn btn-success" onclick="copyShareableUrl()" title="Copy shareable URL to clipboard">
                     Share
@@ -582,6 +602,8 @@
             <h3>Chart Combinations:</h3>
             <div id="comparison-items"></div>
         </div>
+
+
 
         <div class="copyleft">
             <a href="https://github.com/yytdfc/llm-performance-viz"
@@ -621,6 +643,9 @@
             try {
                 await loadTreeStructure();
                 setupFilterEventListeners();
+                
+                // Set up initial slider event listeners
+                setupSliderEventListeners();
 
                 // Restore state from URL parameters after tree is loaded
                 setTimeout(() => {
@@ -675,6 +700,12 @@
                     document.getElementById('filter-clear').style.display = 'none';
                 }
 
+                // Reset all checkboxes
+                document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.disabled = false; // Keep enabled for one-click functionality
+                });
+
                 console.log('Tree data refreshed successfully');
 
             } catch (error) {
@@ -720,17 +751,50 @@
             label.className = 'tree-label';
             label.textContent = node.label;
 
+            // Add checkbox for model nodes (leaf nodes)
+            let checkbox = null;
+            if (node.type === 'model') {
+                checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'tree-checkbox';
+                checkbox.disabled = false; // Enable by default for one-click functionality
+                
+                // Add checkbox event handler
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    handleModelCheckboxChange(node, checkbox.checked);
+                });
+            }
+
             const count = document.createElement('span');
             count.className = 'tree-count';
             count.textContent = node.count;
 
             item.appendChild(toggle);
+            if (checkbox) {
+                item.appendChild(checkbox);
+            }
             item.appendChild(label);
             item.appendChild(count);
+
+            // Store node data on the DOM element for reliable identification
+            if (node.type === 'model') {
+                item.dataset.nodeData = JSON.stringify({
+                    runtime: node.runtime,
+                    instance_type: node.instance_type,
+                    model_name: node.model_name,
+                    type: node.type,
+                    label: node.label
+                });
+            }
 
             // Add click handler
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Don't handle tree item click if the click was on the checkbox
+                if (e.target.classList.contains('tree-checkbox')) {
+                    return;
+                }
                 handleTreeItemClick(node, item, toggle);
             });
 
@@ -790,6 +854,72 @@
 
                 // Load token parameters for this selection
                 await loadTokenParameters();
+
+                // Don't auto-check checkbox when clicking on model name
+                // User must explicitly click the checkbox to select/deselect
+            }
+        }
+
+        // Handle model checkbox change
+        async function handleModelCheckboxChange(node, isChecked) {
+            if (isChecked) {
+                // Use default token values if sliders are disabled (not yet loaded)
+                const inputTokensSlider = document.getElementById('input-tokens');
+                const outputTokensSlider = document.getElementById('output-tokens');
+                const randomTokensSlider = document.getElementById('random-tokens');
+
+                let inputTokens, outputTokens, randomTokens;
+
+                if (inputTokensSlider.disabled || outputTokensSlider.disabled || randomTokensSlider.disabled) {
+                    // Use default values when token parameters haven't been loaded yet
+                    inputTokens = 1600;
+                    outputTokens = 400;
+                    randomTokens = 1600;
+                } else {
+                    inputTokens = parseInt(inputTokensSlider.value);
+                    outputTokens = parseInt(outputTokensSlider.value);
+                    randomTokens = parseInt(randomTokensSlider.value);
+                }
+
+                const combination = {
+                    runtime: node.runtime,
+                    instance_type: node.instance_type,
+                    model_name: node.model_name,
+                    input_tokens: inputTokens,
+                    output_tokens: outputTokens,
+                    random_tokens: randomTokens
+                };
+
+                // Check if combination already exists
+                const exists = selectedCombinations.some(c =>
+                    c.runtime === combination.runtime &&
+                    c.instance_type === combination.instance_type &&
+                    c.model_name === combination.model_name &&
+                    c.input_tokens === combination.input_tokens &&
+                    c.output_tokens === combination.output_tokens &&
+                    c.random_tokens === combination.random_tokens
+                );
+
+                if (!exists) {
+                    selectedCombinations.push(combination);
+                    updateComparisonList();
+                    generateCharts();
+                    updateUrlWithState();
+                }
+            } else {
+                // Remove from comparison
+                const modelKey = `${node.runtime}-${node.instance_type}-${node.model_name}`;
+                selectedCombinations = selectedCombinations.filter(c => 
+                    `${c.runtime}-${c.instance_type}-${c.model_name}` !== modelKey
+                );
+                updateComparisonList();
+                
+                if (selectedCombinations.length > 0) {
+                    generateCharts();
+                } else {
+                    clearCharts();
+                }
+                updateUrlWithState();
             }
         }
 
@@ -818,11 +948,128 @@
                 const response = await fetch(getApiUrl(`/api/parameters?runtime=${currentSelection.runtime}&instance_type=${currentSelection.instance_type}&model_name=${encodeURIComponent(currentSelection.model_name)}`));
                 const params = await response.json();
 
+                console.log('Loaded parameters:', params); // Debug log
+
                 // Preserve current token selections
                 preserveTokenSelections(params);
+
+                // Update checkbox state based on current combinations
+                updateModelCheckboxStates();
             } catch (error) {
+                console.error('Failed to load parameters:', error); // Debug log
                 showError('Failed to load parameters: ' + error.message);
+                
+                // Enable sliders with default ranges if API fails
+                enableSlidersWithDefaults();
             }
+        }
+
+        // Enable sliders with default ranges when API fails
+        function enableSlidersWithDefaults() {
+            const sliders = [
+                { id: 'input-tokens', min: 100, max: 4000, default: 1600 },
+                { id: 'output-tokens', min: 50, max: 2000, default: 400 },
+                { id: 'random-tokens', min: 100, max: 4000, default: 1600 }
+            ];
+
+            sliders.forEach(slider => {
+                const sliderElement = document.getElementById(slider.id);
+                const valueElement = document.getElementById(slider.id + '-value');
+                
+                sliderElement.disabled = false;
+                sliderElement.min = slider.min;
+                sliderElement.max = slider.max;
+                sliderElement.value = slider.default;
+                valueElement.textContent = slider.default;
+                
+                // Set available values to allow any value in range
+                sliderElement.availableValues = [];
+                for (let i = slider.min; i <= slider.max; i += 100) {
+                    sliderElement.availableValues.push(i);
+                }
+            });
+
+            setupSliderEventListeners();
+            updateRandomTokensMax();
+        }
+
+        // Update checkbox states based on current combinations
+        function updateModelCheckboxStates() {
+            document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
+                const treeItem = checkbox.closest('.tree-item');
+                const treeNode = findNodeFromTreeItem(treeItem);
+                
+                if (treeNode && treeNode.type === 'model') {
+                    const modelKey = `${treeNode.runtime}-${treeNode.instance_type}-${treeNode.model_name}`;
+                    const isInComparison = selectedCombinations.some(c => 
+                        `${c.runtime}-${c.instance_type}-${c.model_name}` === modelKey
+                    );
+                    checkbox.checked = isInComparison;
+                }
+            });
+        }
+
+        // Helper function to find node data from tree item element
+        function findNodeFromTreeItem(treeItem) {
+            // Use stored node data for reliable identification
+            const nodeDataStr = treeItem.dataset.nodeData;
+            if (nodeDataStr) {
+                try {
+                    return JSON.parse(nodeDataStr);
+                } catch (e) {
+                    console.warn('Failed to parse node data:', e);
+                }
+            }
+            
+            // Fallback to the old method if no data attribute found
+            const label = treeItem.querySelector('.tree-label').textContent;
+            
+            // Search through tree data to find matching node
+            function searchTree(nodes) {
+                for (const node of nodes) {
+                    if (node.label === label && node.type === 'model') {
+                        return node;
+                    }
+                    if (node.children) {
+                        const found = searchTree(node.children);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            }
+            
+            return searchTree(treeData);
+        }
+
+        // Update combinations for checked models when token values change
+        function updateCheckedModelCombinations() {
+            if (!currentSelection) return;
+
+            const inputTokens = parseInt(document.getElementById('input-tokens').value);
+            const outputTokens = parseInt(document.getElementById('output-tokens').value);
+            const randomTokens = parseInt(document.getElementById('random-tokens').value);
+
+            // Find the checkbox for the current selection
+            const currentModelCheckbox = document.querySelector('.tree-item.selected .tree-checkbox');
+            const currentModelKey = `${currentSelection.runtime}-${currentSelection.instance_type}-${currentSelection.model_name}`;
+
+            // Check if this exact token configuration already exists in the chart
+            const exactConfigExists = selectedCombinations.some(c =>
+                c.runtime === currentSelection.runtime &&
+                c.instance_type === currentSelection.instance_type &&
+                c.model_name === currentSelection.model_name &&
+                c.input_tokens === inputTokens &&
+                c.output_tokens === outputTokens &&
+                c.random_tokens === randomTokens
+            );
+
+            // Update checkbox state based on whether this configuration exists
+            if (currentModelCheckbox) {
+                currentModelCheckbox.checked = exactConfigExists;
+            }
+
+            // Don't automatically add/remove combinations when sliding
+            // User must explicitly check/uncheck the checkbox to add/remove
         }
 
         // Helper function to preserve token selections across model changes
@@ -905,30 +1152,36 @@
 
             // Input tokens slider
             inputTokensSlider.addEventListener('input', function () {
+                let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
-                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    value = findClosestAvailableValue(this.value, this.availableValues);
                     this.value = value;
-                    document.getElementById('input-tokens-value').textContent = value;
-                    updateRandomTokensMax();
                 }
+                document.getElementById('input-tokens-value').textContent = value;
+                updateRandomTokensMax();
+                updateCheckedModelCombinations();
             });
 
             // Output tokens slider
             outputTokensSlider.addEventListener('input', function () {
+                let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
-                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    value = findClosestAvailableValue(this.value, this.availableValues);
                     this.value = value;
-                    document.getElementById('output-tokens-value').textContent = value;
                 }
+                document.getElementById('output-tokens-value').textContent = value;
+                updateCheckedModelCombinations();
             });
 
             // Random tokens slider
             randomTokensSlider.addEventListener('input', function () {
+                let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
-                    const value = findClosestAvailableValue(this.value, this.availableValues);
+                    value = findClosestAvailableValue(this.value, this.availableValues);
                     this.value = value;
-                    document.getElementById('random-tokens-value').textContent = value;
                 }
+                document.getElementById('random-tokens-value').textContent = value;
+                updateCheckedModelCombinations();
             });
         }
 
@@ -1028,63 +1281,131 @@
             }
         }
 
-        // Add current selection to comparison list
-        function addToComparison() {
-            if (!currentSelection) {
-                showError('Please select a model from the tree first');
+        // Export current chart data as CSV
+        function exportData() {
+            if (selectedCombinations.length === 0) {
+                showError('No data to export. Please select some models first.');
                 return;
             }
 
-            const inputTokensSlider = document.getElementById('input-tokens');
-            const outputTokensSlider = document.getElementById('output-tokens');
-            const randomTokensSlider = document.getElementById('random-tokens');
-
-            if (inputTokensSlider.disabled || outputTokensSlider.disabled || randomTokensSlider.disabled) {
-                showError('Please ensure all token parameters are configured');
+            // Use the same data that's currently displayed in charts
+            if (!window.currentChartData) {
+                showError('No chart data available. Please wait for charts to load.');
                 return;
             }
 
-            const inputTokens = parseInt(inputTokensSlider.value);
-            const outputTokens = parseInt(outputTokensSlider.value);
-            const randomTokens = parseInt(randomTokensSlider.value);
+            const csvContent = generateCSV(window.currentChartData);
 
-            if (!inputTokens || !outputTokens || randomTokens === undefined) {
-                showError('Please configure all token parameters before adding to chart');
-                return;
+            // Create and download the CSV file
+            const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+            link.download = `llm-performance-data-${timestamp}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showSuccess('Data exported successfully!');
+        }
+
+        // Helper function to escape CSV values
+        function escapeCSVValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
             }
-
-            const combination = {
-                runtime: currentSelection.runtime,
-                instance_type: currentSelection.instance_type,
-                model_name: currentSelection.model_name,
-                input_tokens: inputTokens,
-                output_tokens: outputTokens,
-                random_tokens: randomTokens
-            };
-
-            // Check if combination already exists
-            const exists = selectedCombinations.some(c =>
-                c.runtime === combination.runtime &&
-                c.instance_type === combination.instance_type &&
-                c.model_name === combination.model_name &&
-                c.input_tokens === combination.input_tokens &&
-                c.output_tokens === combination.output_tokens &&
-                c.random_tokens === combination.random_tokens
-            );
-
-            if (exists) {
-                showError('This combination is already in the chart list');
-                return;
+            // Convert to string and check if it needs escaping
+            const str = String(value);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                // Escape quotes by doubling them and wrap in quotes
+                return '"' + str.replace(/"/g, '""') + '"';
             }
+            return str;
+        }
 
-            selectedCombinations.push(combination);
-            updateComparisonList();
+        // Generate CSV content from chart data
+        function generateCSV(data) {
+            const metrics = [
+                { key: 'first_token_latency_mean', title: 'First Token Latency (seconds)' },
+                { key: 'output_tokens_per_second_mean', title: 'Output Tokens Per Second' },
+                { key: 'server_throughput', title: 'Server Throughput (total tokens/sec)' },
+                { key: 'end_to_end_latency_mean', title: 'End-to-End Latency (seconds)' },
+                { key: 'requests_per_second', title: 'Request Rate (requests/sec)' },
+                { key: 'success_rate', title: 'Success Rate (%)' },
+                { key: 'cost_per_million_tokens', title: 'Cost per Million Tokens ($)' },
+                { key: 'cost_per_1k_requests', title: 'Cost per 1k Requests ($)' }
+            ];
 
-            // Auto-generate charts when combination is added
-            generateCharts();
+            let csvContent = `Export Date: ${new Date().toISOString()}\n\n`;
 
-            // Update URL with new state
-            updateUrlWithState();
+            // Get all unique concurrency levels across all models
+            const allConcurrencyLevels = new Set();
+            data.forEach(item => {
+                item.data.forEach(d => allConcurrencyLevels.add(d.processes));
+            });
+            const sortedConcurrencyLevels = Array.from(allConcurrencyLevels).sort((a, b) => a - b);
+
+            // Create model labels
+            const modelLabels = data.map(item => {
+                const combo = item.combination;
+                const runtimeName = combo.runtime;
+                const instanceSize = combo.instance_type.includes('4xlarge') ? '4x' :
+                    combo.instance_type.includes('48xlarge') ? '48x' :
+                        combo.instance_type.split('.')[1] || combo.instance_type;
+                const instanceBase = combo.instance_type.split('.')[0];
+                const instanceInfo = `${instanceBase}.${instanceSize}`;
+                const modelName = combo.model_name;
+                const tokenInfo = `${combo.input_tokens}(${combo.random_tokens})->${combo.output_tokens}`;
+                return `${runtimeName}/${instanceInfo}/${modelName} ${tokenInfo}`;
+            });
+
+            // Generate CSV for each metric
+            metrics.forEach((metric, metricIndex) => {
+                if (metricIndex > 0) csvContent += '\n';
+                
+                csvContent += `${metric.title}\n`;
+                
+                // Header row: Concurrency, Model1, Model2, ...
+                const headerRow = ['Concurrency', ...modelLabels.map(escapeCSVValue)];
+                csvContent += headerRow.join(',') + '\n';
+
+                // Data rows
+                sortedConcurrencyLevels.forEach(concurrency => {
+                    const row = [concurrency];
+                    
+                    data.forEach(item => {
+                        const dataPoint = item.data.find(d => d.processes === concurrency);
+                        if (dataPoint && dataPoint[metric.key] !== undefined) {
+                            let value = dataPoint[metric.key];
+                            // Convert success rate to percentage for display
+                            if (metric.key === 'success_rate') {
+                                value = value * 100;
+                            }
+                            // Keep raw numeric values without quotes
+                            row.push(typeof value === 'number' ? value : parseFloat(value) || '');
+                        } else {
+                            row.push(''); // Empty cell if no data
+                        }
+                    });
+                    
+                    // Join row with proper escaping - only escape non-numeric values
+                    const escapedRow = row.map((val, index) => {
+                        if (index === 0 || val === '' || typeof val === 'number') {
+                            return val; // Don't escape concurrency numbers or empty values or numeric values
+                        }
+                        return escapeCSVValue(val);
+                    });
+                    csvContent += escapedRow.join(',') + '\n';
+                });
+                
+                csvContent += '\n'; // Extra line between metric blocks
+            });
+
+            return csvContent;
         }
 
         // Update the comparison list display
@@ -1114,8 +1435,20 @@
 
         // Remove combination from comparison list
         function removeFromComparison(index) {
+            const removedCombo = selectedCombinations[index];
             selectedCombinations.splice(index, 1);
             updateComparisonList();
+
+            // Update corresponding checkbox
+            const modelKey = `${removedCombo.runtime}-${removedCombo.instance_type}-${removedCombo.model_name}`;
+            document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
+                const treeItem = checkbox.closest('.tree-item');
+                const treeNode = findNodeFromTreeItem(treeItem);
+                
+                if (treeNode && `${treeNode.runtime}-${treeNode.instance_type}-${treeNode.model_name}` === modelKey) {
+                    checkbox.checked = false;
+                }
+            });
 
             // Auto-generate charts when combination is removed
             if (selectedCombinations.length > 0) {
@@ -1133,6 +1466,11 @@
             selectedCombinations = [];
             updateComparisonList();
             clearCharts();
+
+            // Uncheck all checkboxes
+            document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
 
             // Update URL with new state
             updateUrlWithState();
@@ -1171,6 +1509,9 @@
         // Create all charts
         function createCharts(data) {
             clearCharts();
+
+            // Store chart data globally for export functionality
+            window.currentChartData = data;
 
             const container = document.getElementById('charts-container');
 
@@ -1228,8 +1569,8 @@
                 // Keep full model name
                 const modelName = combo.model_name;
 
-                // Include all token information: input(rand)→output
-                const tokenInfo = `${combo.input_tokens}(${combo.random_tokens})→${combo.output_tokens}`;
+                // Include all token information: input(rand)->output
+                const tokenInfo = `${combo.input_tokens}(${combo.random_tokens})->${combo.output_tokens}`;
 
                 const label = `${runtimeName}/${instanceInfo}/${modelName} ${tokenInfo}`;
 
@@ -1298,6 +1639,9 @@
             });
             charts = {};
             document.getElementById('charts-container').innerHTML = '';
+            
+            // Clear stored chart data
+            window.currentChartData = null;
         }
 
         // Show loading indicator
@@ -1536,6 +1880,11 @@
                     if (selectedCombinations.length > 0) {
                         generateCharts();
                     }
+
+                    // Update checkbox states after restoring combinations
+                    setTimeout(() => {
+                        updateModelCheckboxStates();
+                    }, 100);
                 } catch (error) {
                     console.warn('Failed to restore combinations from URL:', error);
                 }
