@@ -50,57 +50,36 @@ mkdir -p archive_results
 echo "Starting batch tests for vLLM model configurations..."
 echo ""
 
-# Test Qwen3-30B-A3B-FP8
-# if [ -f "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml" ]; then
-#     run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml" "Qwen3-30B-A3B-FP8"
-# fi
+run_test ""
 
-# Test Qwen3-14B-FP8
-
-
-# Add more model tests here as needed
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/NewModel.yaml"
-
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-14B-FP8.yaml" "Qwen3-14B-FP8"
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-4B-FP8.yaml" "Qwen3-4B-FP8"
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-8B-FP8.yaml" "Qwen3-8B-FP8"
-# run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-32B-FP8.yaml" "Qwen3-32B-FP8"
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-default"
-
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp"
-# run_test "model_configs/v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml" "DeepSeek-R1-0528-mtp-compile"
-
-# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp-compile.yaml"
-
-# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
 
 # g6e.4xlarge
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-8B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-14B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-32B-FP8.yaml"
 
 
 # p4d.24xlarge
-# run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-235B-A22B-FP8.yaml"
-run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-30B-A3B-FP8.yaml"
-# run_test "model_configs/sglang-v0.4.9.post4/p4d.24xlarge/Qwen3-235B-A22B-GPTQ-Int4.yaml"
 
 
+# p5.48xlarge
+run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-235B-A22B.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-30B-A3B-FP8-tp1dp8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-30B-A3B-FP8-tp1dp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-Air-FP8-tp2dp4-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-Air-FP8-tp4dp2-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-FP8-tp8-mtp.yaml"
 
-# --skip-deployment
-# run_test "model_configs/sglang-blackwell-0730/p6-b200.48xlarge/DeepSeek-R1-0528.yaml"
-run_test "model_configs/sglang-v0.4.9.post4/p6-b200.48xlarge/DeepSeek-R1-0528.yaml"
-# run_test "model_configs/sglang-v0.4.9.post4/p6-b200.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-
-# run_test "model_configs/sglang-v0.4.9.post6/p6-b200.48xlarge/DeepSeek-R1-0528-mtp.yaml"
-
-# run_test "model_configs/vllm-v0.9.2/p6-b200.48xlarge/DeepSeek-R1-0528.yaml" # --skip-deployment
-
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+# p5en.48xlarge
+run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-Air-FP8-dp8-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-Air-FP8-tp2dp4-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-FP8-tp8-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-FP8-tp4dp2-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
-run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp4dp2.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B.yaml"
-
 
 
 echo "=========================================="

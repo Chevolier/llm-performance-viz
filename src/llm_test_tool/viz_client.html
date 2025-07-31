@@ -161,18 +161,38 @@
 
         .button-group {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: end;
+            flex-wrap: wrap;
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 8px 12px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             transition: background-color 0.3s;
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 400px) {
+            .btn {
+                font-size: 10px;
+                padding: 6px 8px;
+                height: 28px;
+            }
         }
 
         .btn-primary {
@@ -511,6 +531,32 @@
         </div>
 
         <div class="tree-container">
+            <div class="tree-title">Token Configuration</div>
+            <div class="slider-group">
+                <label for="input-tokens">Input Tokens: <span id="input-tokens-value">1600</span></label>
+                <input type="range" id="input-tokens" class="slider" min="0" max="2000" value="1600" disabled>
+            </div>
+
+            <div class="slider-group">
+                <label for="output-tokens">Output Tokens: <span id="output-tokens-value">400</span></label>
+                <input type="range" id="output-tokens" class="slider" min="0" max="1000" value="400" disabled>
+            </div>
+
+            <div class="slider-group">
+                <label for="random-tokens">Random Tokens: <span id="random-tokens-value">1600</span></label>
+                <input type="range" id="random-tokens" class="slider" min="0" max="2000" value="1600" disabled>
+            </div>
+
+            <div class="button-group" style="margin-top: 15px;">
+                <button class="btn btn-primary" onclick="addToComparison()">Add to Chart</button>
+                <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
+                <button class="btn btn-success" onclick="copyShareableUrl()" title="Copy shareable URL to clipboard">
+                    Share
+                </button>
+            </div>
+        </div>
+
+        <div class="tree-container">
             <div class="tree-header">
                 <div class="tree-title">🚀 Runtime / Instance / Model</div>
                 <button class="refresh-btn" id="refresh-tree" title="Refresh test results from disk">
@@ -532,37 +578,8 @@
             <span id="selected-text">None</span>
         </div>
 
-        <div class="tree-container">
-            <div class="tree-title">Token Configuration</div>
-            <div class="slider-group">
-                <label for="input-tokens">Input Tokens: <span id="input-tokens-value">-</span></label>
-                <input type="range" id="input-tokens" class="slider" min="0" max="1000" value="0" disabled>
-            </div>
-
-            <div class="slider-group">
-                <label for="output-tokens">Output Tokens: <span id="output-tokens-value">-</span></label>
-                <input type="range" id="output-tokens" class="slider" min="0" max="1000" value="0" disabled>
-            </div>
-
-            <div class="slider-group">
-                <label for="random-tokens">Random Tokens: <span id="random-tokens-value">-</span></label>
-                <input type="range" id="random-tokens" class="slider" min="0" max="1000" value="0" disabled>
-            </div>
-
-            <div class="button-group" style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="addToComparison()">Add to Comparison</button>
-                <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
-            </div>
-            
-            <div class="button-group" style="margin-top: 10px;">
-                <button class="btn btn-success" onclick="copyShareableUrl()" title="Copy shareable URL to clipboard">
-                    📋 Share URL
-                </button>
-            </div>
-        </div>
-
         <div id="comparison-list" class="comparison-list" style="display: none;">
-            <h3>Selected Combinations:</h3>
+            <h3>Chart Combinations:</h3>
             <div id="comparison-items"></div>
         </div>
 
@@ -604,7 +621,7 @@
             try {
                 await loadTreeStructure();
                 setupFilterEventListeners();
-                
+
                 // Restore state from URL parameters after tree is loaded
                 setTimeout(() => {
                     restoreStateFromUrl();
@@ -627,6 +644,8 @@
             treeData = data.tree;
             renderTree();
         }
+
+
 
         // Refresh tree data from disk
         async function refreshTreeData() {
@@ -1030,7 +1049,7 @@
             const randomTokens = parseInt(randomTokensSlider.value);
 
             if (!inputTokens || !outputTokens || randomTokens === undefined) {
-                showError('Please configure all token parameters before adding to comparison');
+                showError('Please configure all token parameters before adding to chart');
                 return;
             }
 
@@ -1054,7 +1073,7 @@
             );
 
             if (exists) {
-                showError('This combination is already in the comparison list');
+                showError('This combination is already in the chart list');
                 return;
             }
 
@@ -1063,7 +1082,7 @@
 
             // Auto-generate charts when combination is added
             generateCharts();
-            
+
             // Update URL with new state
             updateUrlWithState();
         }
@@ -1104,7 +1123,7 @@
             } else {
                 clearCharts();
             }
-            
+
             // Update URL with new state
             updateUrlWithState();
         }
@@ -1114,7 +1133,7 @@
             selectedCombinations = [];
             updateComparisonList();
             clearCharts();
-            
+
             // Update URL with new state
             updateUrlWithState();
         }
@@ -1162,7 +1181,9 @@
                 { id: 'server-throughput', title: 'Server Throughput vs Concurrency', metric: 'server_throughput', unit: 'total tokens/sec' },
                 { id: 'end-to-end-latency', title: 'End-to-End Latency vs Concurrency', metric: 'end_to_end_latency_mean', unit: 'seconds' },
                 { id: 'requests-per-second', title: 'Request Rate vs Concurrency', metric: 'requests_per_second', unit: 'requests/sec' },
-                { id: 'success-rate', title: 'Success Rate vs Concurrency', metric: 'success_rate', unit: '%' }
+                { id: 'success-rate', title: 'Success Rate vs Concurrency', metric: 'success_rate', unit: '%' },
+                { id: 'cost-per-million-tokens', title: 'Cost per Million Tokens vs Concurrency', metric: 'cost_per_million_tokens', unit: '$' },
+                { id: 'cost-per-1k-requests', title: 'Cost per 1k Requests vs Concurrency', metric: 'cost_per_1k_requests', unit: '$' }
             ];
 
             chartTypes.forEach(chartType => {
@@ -1306,39 +1327,63 @@
             const refreshBtn = document.getElementById('refresh-tree');
 
             // Filter input event
-            filterInput.addEventListener('input', function () {
-                const filterText = this.value.trim();
-                filterTree(filterText);
+            if (filterInput) {
+                filterInput.addEventListener('input', function () {
+                    const filterText = this.value.trim();
+                    filterTree(filterText);
 
-                // Show/hide clear button
-                if (filterText) {
-                    filterClear.style.display = 'flex';
-                } else {
-                    filterClear.style.display = 'none';
-                }
-                
-                // Update URL with filter state
-                updateUrlWithState();
-            });
+                    // Show/hide clear button
+                    if (filterText && filterClear) {
+                        filterClear.style.display = 'flex';
+                    } else if (filterClear) {
+                        filterClear.style.display = 'none';
+                    }
+
+                    // Update URL with filter state
+                    updateUrlWithState();
+                });
+            }
 
             // Clear button event
-            filterClear.addEventListener('click', function () {
-                filterInput.value = '';
-                filterTree('');
-                this.style.display = 'none';
-                filterInput.focus();
-                
-                // Update URL with cleared filter
-                updateUrlWithState();
-            });
+            if (filterClear) {
+                filterClear.addEventListener('click', function () {
+                    if (filterInput) {
+                        filterInput.value = '';
+                        filterTree('');
+                        filterInput.focus();
+                    }
+                    this.style.display = 'none';
+
+                    // Update URL with cleared filter
+                    updateUrlWithState();
+                });
+            }
 
             // Refresh button event
-            refreshBtn.addEventListener('click', async function () {
-                await refreshTreeData();
-            });
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', async function () {
+                    await refreshTreeData();
+                });
+            }
+
+            // Instance price change event (if element exists)
+            const instancePriceInput = document.getElementById('instance-price');
+            if (instancePriceInput) {
+                instancePriceInput.addEventListener('input', function () {
+                    // Regenerate charts when price changes
+                    if (selectedCombinations.length > 0) {
+                        generateCharts();
+                    }
+
+                    // Update URL with pricing info
+                    updateUrlWithState();
+                });
+            }
 
             // Initially hide clear button
-            filterClear.style.display = 'none';
+            if (filterClear) {
+                filterClear.style.display = 'none';
+            }
         }
 
         // Filter tree based on search text
@@ -1412,11 +1457,11 @@
         // URL State Management
         function updateUrlWithState() {
             const url = new URL(window.location);
-            
+
             // Clear existing parameters
             url.searchParams.delete('combinations');
             url.searchParams.delete('filter');
-            
+
             // Add current combinations
             if (selectedCombinations.length > 0) {
                 const combinationsData = selectedCombinations.map(combo => ({
@@ -1429,37 +1474,51 @@
                 }));
                 url.searchParams.set('combinations', btoa(JSON.stringify(combinationsData)));
             }
-            
+
             // Add current filter
             const filterInput = document.getElementById('tree-filter');
             if (filterInput && filterInput.value.trim()) {
                 url.searchParams.set('filter', filterInput.value.trim());
             }
-            
+
+
+
             // Update URL without page reload
             window.history.replaceState({}, '', url);
         }
-        
+
         function restoreStateFromUrl() {
             const url = new URL(window.location);
-            
+
             // Restore filter
             const filter = url.searchParams.get('filter');
             if (filter) {
                 const filterInput = document.getElementById('tree-filter');
+                const filterClear = document.getElementById('filter-clear');
                 if (filterInput) {
                     filterInput.value = filter;
                     filterTree(filter);
-                    document.getElementById('filter-clear').style.display = 'flex';
+                    if (filterClear) {
+                        filterClear.style.display = 'flex';
+                    }
                 }
             }
-            
+
+            // Restore instance price
+            const price = url.searchParams.get('price');
+            if (price) {
+                const instancePriceInput = document.getElementById('instance-price');
+                if (instancePriceInput) {
+                    instancePriceInput.value = price;
+                }
+            }
+
             // Restore combinations
             const combinationsParam = url.searchParams.get('combinations');
             if (combinationsParam) {
                 try {
                     const combinationsData = JSON.parse(atob(combinationsParam));
-                    
+
                     // Convert back to full format
                     const combinations = combinationsData.map(combo => ({
                         runtime: combo.r,
@@ -1469,10 +1528,10 @@
                         output_tokens: combo.ot,
                         random_tokens: combo.rt
                     }));
-                    
+
                     selectedCombinations = combinations;
                     updateComparisonList();
-                    
+
                     // Generate charts if combinations exist
                     if (selectedCombinations.length > 0) {
                         generateCharts();
@@ -1482,11 +1541,11 @@
                 }
             }
         }
-        
+
         function copyShareableUrl() {
             updateUrlWithState();
             const url = window.location.href;
-            
+
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(url).then(() => {
                     showSuccess('Shareable URL copied to clipboard!');
@@ -1497,7 +1556,7 @@
                 fallbackCopyUrl(url);
             }
         }
-        
+
         function fallbackCopyUrl(url) {
             // Fallback for older browsers or non-HTTPS
             const textArea = document.createElement('textarea');
@@ -1508,17 +1567,17 @@
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            
+
             try {
                 document.execCommand('copy');
                 showSuccess('Shareable URL copied to clipboard!');
             } catch (err) {
                 showError('Failed to copy URL. Please copy manually: ' + url);
             }
-            
+
             document.body.removeChild(textArea);
         }
-        
+
         function showSuccess(message) {
             const successDiv = document.createElement('div');
             successDiv.style.cssText = `
@@ -1535,7 +1594,7 @@
             `;
             successDiv.textContent = message;
             document.body.appendChild(successDiv);
-            
+
             setTimeout(() => {
                 document.body.removeChild(successDiv);
             }, 3000);

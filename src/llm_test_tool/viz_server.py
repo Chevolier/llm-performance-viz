@@ -25,6 +25,38 @@ app = FastAPI(
 )
 
 
+class PriceProvider:
+    """Provider for instance pricing information"""
+    
+    def __init__(self, price_config_path: str = "instance_prices.json"):
+        self.price_config_path = Path(price_config_path)
+        self.prices = {}
+        self.load_prices()
+    
+    def load_prices(self):
+        """Load instance prices from configuration file"""
+        try:
+            if self.price_config_path.exists():
+                with open(self.price_config_path, 'r') as f:
+                    config = json.load(f)
+                    self.prices = config.get('aws_ec2_prices', {})
+                    print(f"Loaded pricing for {len(self.prices)} instance types")
+            else:
+                print(f"Price config file not found: {self.price_config_path}")
+                self.prices = {}
+        except Exception as e:
+            print(f"Error loading price config: {e}")
+            self.prices = {}
+    
+    def get_price(self, instance_type: str) -> float:
+        """Get price for a specific instance type"""
+        return self.prices.get(instance_type, 0.0)
+    
+    def get_all_prices(self) -> Dict[str, float]:
+        """Get all available instance prices"""
+        return self.prices.copy()
+
+
 class ResultsDataProvider:
     """Data provider for LLM performance test results"""
     
@@ -186,8 +218,9 @@ class CombinationInfo(BaseModel):
     model_name: str
     id: str
 
-# Initialize data provider
+# Initialize data and price providers
 data_provider = ResultsDataProvider()
+price_provider = PriceProvider()
 
 
 @app.get("/")
@@ -233,6 +266,15 @@ async def get_parameters(
     return parameters
 
 
+@app.get("/api/instance-prices")
+async def get_instance_prices():
+    """Get all available instance prices"""
+    return {
+        "prices": price_provider.get_all_prices(),
+        "config_file": str(price_provider.price_config_path)
+    }
+
+
 @app.get("/api/performance-data")
 async def get_performance_data(
     runtime: Optional[str] = Query(None),
@@ -263,6 +305,10 @@ async def get_performance_data(
     return data
 
 
+class ComparisonRequestWithPrice(BaseModel):
+    combinations: List[Dict]
+    instance_price: Optional[float] = 0.0
+
 @app.post("/api/comparison-data")
 async def get_comparison_data(request: ComparisonRequest):
     """Get performance data for multiple combinations for comparison"""
@@ -270,6 +316,41 @@ async def get_comparison_data(request: ComparisonRequest):
         result = []
         for combo in request.combinations:
             data = data_provider.get_performance_data(combo)
+            
+            # Get instance price from config
+            instance_type = combo.get('instance_type', '')
+            instance_price = price_provider.get_price(instance_type)
+            
+            # Calculate cost metrics if we have a price
+            if instance_price and instance_price > 0:
+                for record in data:
+                    server_throughput = record.get('server_throughput', 0)
+                    requests_per_second = record.get('requests_per_second', 0)
+                    
+                    if server_throughput > 0:
+                        # Cost per million tokens = instance_price_per_hour / (server_throughput_tokens_per_second * 3600) * 1,000,000
+                        # Simplified: instance_price / server_throughput * 1,000,000 / 3600
+                        cost_per_million_tokens = (instance_price / server_throughput) * 1000000 / 3600
+                        record['cost_per_million_tokens'] = cost_per_million_tokens
+                    else:
+                        record['cost_per_million_tokens'] = 0
+                    
+                    if requests_per_second > 0:
+                        # Cost per 1k requests = instance_price_per_hour / (requests_per_second * 3600) * 1000
+                        # Simplified: instance_price / requests_per_second * 1000 / 3600
+                        cost_per_1k_requests = (instance_price / requests_per_second) * 1000 / 3600
+                        record['cost_per_1k_requests'] = cost_per_1k_requests
+                    else:
+                        record['cost_per_1k_requests'] = 0
+                    
+                    record['instance_price_used'] = instance_price
+            else:
+                # Set cost to 0 if no price available
+                for record in data:
+                    record['cost_per_million_tokens'] = 0
+                    record['cost_per_1k_requests'] = 0
+                    record['instance_price_used'] = 0
+            
             result.append({
                 'combination': combo,
                 'data': data
