@@ -108,7 +108,7 @@ class LlmApiClient:
                     except Exception as e:
                         # Silently continue on parsing errors
                         continue
-            print()
+            # print()
         except Exception as e:
             print(f"Request error: {e}")
             return RequestResult(
