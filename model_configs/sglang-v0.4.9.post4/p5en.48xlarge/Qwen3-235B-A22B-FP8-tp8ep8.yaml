@@ -15,9 +15,12 @@ deployment:
   # Universal application arguments
   app_args:
     host: "0.0.0.0"
-    model-path: "model/Qwen/Qwen3-30B-A3B-FP8"
+    model-path: "model/Qwen/Qwen3-235B-A22B-FP8"
     trust-remote-code: true
-    tp-size: 1
+    dp-size: 1
+    tp-size: 8
+    ep-size: 8
+    enable-ep-moe: true
     mem-fraction-static: 0.90
     tool-call-parser: "qwen25"
     reasoning-parser: "deepseek-r1"
