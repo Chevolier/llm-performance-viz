@@ -1,33 +1,29 @@
 # LLM Test Tool
 
-A comprehensive tool for testing LLM API performance with automated deployment and extensive test matrices.
-
-[中文版本 / Chinese Version](README_CN.md)
+一个用于测试 LLM API 性能的综合工具，支持自动化部署和广泛的测试矩阵。
 
 ![Web Interface Screenshot](./assets/web_screenshot.webp)
 
+## 快速开始指南
 
-
-## Quick Start Guide
-
-### 0. Installation
+### 0. 安装
 
 ```bash
 git clone https://github.com/yytdfc/llm-performance-viz.git
 cd llm-performance-viz/
 ```
 
-### 1. Prerequisites (Optional)
+### 1. 前置条件（可选）
 
-This step is optional but recommended for better deployment preparation. Ensure your model weights are available via Hugging Face Hub or pre-downloaded locally. The tool supports models like `Qwen/Qwen3-235B-A22B-FP8`, `deepseek-ai/DeepSeek-R1-0528`, etc.
+此步骤是可选的，但建议进行以便更好地准备部署。确保您的模型权重可通过 Hugging Face Hub 获取或已在本地预下载。该工具支持 `Qwen/Qwen3-235B-A22B-FP8`、`deepseek-ai/DeepSeek-R1-0528` 等模型。
 
-#### Pre-download Model Weights
+#### 预下载模型权重
 ```bash
 # Using Hugging Face CLI
 uv run hf download Qwen/Qwen3-235B-A22B-FP8 --local-dir /opt/dlami/nvme/Qwen/Qwen3-235B-A22B-FP8
 ```
 
-#### Pre-pull Docker Images
+#### 预拉取 Docker 镜像
 ```bash
 # vLLM images
 docker pull vllm/vllm-openai:v0.9.2
@@ -36,11 +32,11 @@ docker pull vllm/vllm-openai:v0.9.2
 docker pull lmsysorg/sglang:v0.4.9.post4-cu126
 ```
 
-The specific model paths and Docker images should be configured in your model configuration files (see `model_configs/` directory).
+具体的模型路径和 Docker 镜像应在您的模型配置文件中配置（参见 `model_configs/` 目录）。
 
-### 2. Create Configuration Files
+### 2. 创建配置文件
 
-Configuration files are stored in `model_configs/` organized by framework version and instance type:
+配置文件存储在 `model_configs/` 中，按框架版本和实例类型组织：
 
 ```
 model_configs/
@@ -49,13 +45,13 @@ model_configs/
         └── [model_config]/   # Model configuration YAML files
 ```
 
-#### Configuration File Structure
+#### 配置文件结构
 
-The configuration file contains three main sections:
+配置文件包含三个主要部分：
 
-##### 1. Deployment Section
+##### 1. 部署部分
 
-Deployment parameters map directly to Docker commands:
+部署参数直接映射到 Docker 命令：
 
 ```yaml
 deployment:
@@ -99,7 +95,7 @@ docker run --gpus all --shm-size 1000g --ipc host --network host \
   --tensor-parallel-size 4
 ```
 
-##### 2. Test Matrix Section
+##### 2. 测试矩阵部分
 
 ```yaml
 test_matrix:
@@ -109,7 +105,7 @@ test_matrix:
   random_tokens: [100, 1600, 6400]      # Random token counts (for cache testing)
 ```
 
-##### 3. Test Configuration Section
+##### 3. 测试配置部分
 
 ```yaml
 test_config:
@@ -118,9 +114,9 @@ test_config:
   cooldown_seconds: 5        # Wait time between tests
 ```
 
-#### Configuration Examples
+#### 配置示例
 
-**vLLM Configuration Example:**
+**vLLM 配置示例：**
 
 ```yaml
 deployment:
@@ -159,7 +155,7 @@ test_config:
   cooldown_seconds: 5
 ```
 
-**SGLang Configuration Example:**
+**SGLang 配置示例：**
 
 ```yaml
 deployment:
@@ -198,46 +194,44 @@ test_config:
   cooldown_seconds: 5
 ```
 
+### 3. 运行测试
 
-### 3. Run Tests
-
-#### Deploy Only (Without Testing)
+#### 仅部署（不测试）
 ```bash
 uv run deploy_server.py --config your_config.yaml
 ```
 
-You can add the `--show-command` parameter to dry-run and show the Docker deployment command to verify it's correct.
+您可以添加 `--show-command` 参数来干运行并显示 Docker 部署命令以验证其正确性。
 
-#### Test with Existing Server
+#### 使用现有服务器测试
 ```bash
 uv run run_auto_test.py --config your_config.yaml --skip-deployment
 ```
 
-#### Automated Testing with Deployment
+#### 自动化测试与部署
 ```bash
 uv run run_auto_test.py --config model_configs/vllm-v0.9.2/p5.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml
 ```
 
-#### Single Test
+#### 单次测试
 
-This runs a single test configuration and saves results in a structured format that can be consumed by the web visualization server. You can also add the `--skip-deployment` parameter to test without deployment.
+这运行单个测试配置并以结构化格式保存结果，可供 web 可视化服务器使用。您也可以添加 `--skip-deployment` 参数来在不部署的情况下测试。
 
 ```bash
 # Run single test
 ./run_single_test.sh "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
 ```
 
+#### 批量测试
 
-#### Batch Testing
-
-This executes all test configurations found in `./run_model_tests.sh`. Results are automatically organized by framework version, instance type, and model configuration, maintaining a consistent directory structure that enables the web server to provide comprehensive performance comparisons and visualizations across different setups.
+这执行 `./run_model_tests.sh` 中找到的所有测试配置。结果自动按框架版本、实例类型和模型配置组织，维护一致的目录结构，使 web 服务器能够提供跨不同设置的全面性能比较和可视化。
 
 ```bash
 # Run all configured tests
 ./run_model_tests.sh
 ```
 
-### 4. Visualize Results
+### 4. 可视化结果
 
 ```bash
 # Start visualization server
@@ -246,25 +240,24 @@ uv run start_viz_server.py
 # Access web interface at: http://localhost:8000
 ```
 
-
-## Manual Testing Usage
+## 手动测试用法
 
 ```bash
 uv run llm-test --processes 4 --requests 10 --model_id "Qwen/Qwen3-30B-A3B-FP8" --input_tokens 1000 --random_tokens 500 --output_tokens 100 --url "http://localhost:8080/v1/chat/completions"
 ```
 
-### Parameters
+### 参数
 
-- `--processes`: Number of parallel processes (default: 4)
-- `--requests`: Number of requests per process (default: 5)
-- `--model_id`: Model ID to test (default: "gpt-3.5-turbo")
-- `--input_tokens`: Total approximate input token length (default: 1000)
-- `--random_tokens`: Number of random tokens to add to the prompt (default: 500)
-- `--output_tokens`: Maximum output tokens to generate (default: 100)
-- `--url`: API endpoint URL (default: "http://localhost:8080/v1/chat/completions")
-- `--output`: Results output file (default: "test_results.json")
+- `--processes`: 并行进程数（默认：4）
+- `--requests`: 每个进程的请求数（默认：5）
+- `--model_id`: 要测试的模型 ID（默认："gpt-3.5-turbo"）
+- `--input_tokens`: 总近似输入 token 长度（默认：1000）
+- `--random_tokens`: 要添加到提示中的随机 token 数量（默认：500）
+- `--output_tokens`: 要生成的最大输出 token 数（默认：100）
+- `--url`: API 端点 URL（默认："http://localhost:8080/v1/chat/completions"）
+- `--output`: 结果输出文件（默认："test_results.json"）
 
-## Example Output
+## 示例输出
 
 ```
 Starting LLM API test:
@@ -343,7 +336,6 @@ Percentiles:
 Detailed results saved to: test_results.json
 ```
 
+## 致谢
 
-## Acknowledgements
-
-This project is powered by [Kiro](https://kiro.dev/).
+本项目由 [Kiro](https://kiro.dev/) 提供支持。
