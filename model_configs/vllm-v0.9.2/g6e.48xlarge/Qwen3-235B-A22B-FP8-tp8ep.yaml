@@ -12,25 +12,23 @@ deployment:
       - "/opt/dlami/nvme/:/vllm-workspace/"
   # Universal application arguments
   app_args:
-    model: "deepseek-ai/DeepSeek-R1-0528"
+    model: "Qwen/Qwen3-235B-A22B-FP8"
     trust-remote-code: true
     max-model-len: 32768
     gpu-memory-utilization: 0.90
     tensor-parallel-size: 8
+    enable-expert-parallel: true
+    trust_remote_code: true
     enable-reasoning: true
     reasoning-parser: "deepseek_r1"
     tool-call-parser: "deepseek_v3" 
-    enable-auto-tool-choice: true
+    enable_auto_tool_choice: true
 
 test_matrix:
   input_tokens: [1600, 6400, 12800]
   output_tokens: [100, 400, 1000]
   processing_num: [1, 16, 32, 64, 128]
   random_tokens: [100, 1600, 6400]
-  # input_tokens: [325]
-  # output_tokens: [200]
-  # processing_num: [1, 4, 16, 32, 64, 128, 256, 512]
-  # random_tokens: [325]
 
 test_config:
   requests_per_process: 5
