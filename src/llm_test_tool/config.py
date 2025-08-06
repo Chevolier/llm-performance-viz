@@ -22,17 +22,17 @@ class TestConfig:
 def parse_arguments() -> TestConfig:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description="Simple multiprocess LLM API testing tool")
-    parser.add_argument("--processes", type=int, default=2, 
+    parser.add_argument("--processes", type=int, default=4, 
                         help="Number of parallel processes")
     parser.add_argument("--requests", type=int, default=5, 
                         help="Number of requests per process")
     parser.add_argument("--model_id", type=str, default="gpt-3.5-turbo", 
                         help="Model ID to test")
-    parser.add_argument("--input_tokens", type=int, default=10, 
+    parser.add_argument("--input_tokens", type=int, default=1000, 
                         help="Total approximate input token length")
-    parser.add_argument("--random_tokens", type=int, default=2, 
+    parser.add_argument("--random_tokens", type=int, default=500, 
                         help="Number of random tokens to add to the prompt")
-    parser.add_argument("--output_tokens", type=int, default=50, 
+    parser.add_argument("--output_tokens", type=int, default=100, 
                         help="Maximum output tokens to generate")
     parser.add_argument("--url", type=str, default="http://localhost:8080/v1/chat/completions", 
                         help="API endpoint URL")
