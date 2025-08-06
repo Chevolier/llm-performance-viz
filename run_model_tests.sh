@@ -44,8 +44,9 @@ echo ""
 
 
 # g6e.4xlarge
-run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
+
+run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-8B-FP8.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-14B-FP8.yaml"
 
@@ -55,10 +56,14 @@ run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
 # p4d.24xlarge
 
 # p4de.24xlarge
-run_test "model_configs/sglang-v0.4.9.post4/p4de.24xlarge/Qwen3-235B-A22B.yaml"
 run_test "model_configs/vllm-v0.9.2/p4de.24xlarge/Qwen3-235B-A22B.yaml"
 
+run_test "model_configs/sglang-v0.4.9.post4/p4de.24xlarge/Qwen3-235B-A22B.yaml"
+
 # p5.48xlarge
+run_test "model_configs/vllm-v0.9.2/p5.48xlarge/Qwen3-235B-A22B.yaml"
+run_test "model_configs/vllm-v0.9.2/p5.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+
 run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-235B-A22B.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-30B-A3B-FP8-tp1dp8.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-30B-A3B-FP8-tp1dp1.yaml"
