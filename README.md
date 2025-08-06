@@ -15,6 +15,8 @@ A comprehensive tool for testing LLM API performance with automated deployment a
 ```bash
 git clone https://github.com/yytdfc/llm-performance-viz.git
 cd llm-performance-viz/
+
+uv sync  # optional
 ```
 
 ### 1. Prerequisites (Optional)
@@ -346,4 +348,9 @@ Detailed results saved to: test_results.json
 
 ## Acknowledgements
 
-This project is powered by [Kiro](https://kiro.dev/).
+This project is mainly coded by [Kiro](https://kiro.dev/).
+
+
+## License
+
+This project is licensed under the [MIT-0 License](./MIT-0).

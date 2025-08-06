@@ -11,6 +11,8 @@
 ```bash
 git clone https://github.com/yytdfc/llm-performance-viz.git
 cd llm-performance-viz/
+
+uv sync  # optional
 ```
 
 ### 1. 前置条件（可选）
@@ -338,4 +340,8 @@ Detailed results saved to: test_results.json
 
 ## 致谢
 
-本项目由 [Kiro](https://kiro.dev/) 提供支持。
+本项目主要由 [Kiro](https://kiro.dev/) 生成。
+
+## 许可证
+
+本项目采用 [MIT-0 许可证](./MIT-0)。
