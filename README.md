@@ -79,17 +79,17 @@ test_config:
 
 #### Automated Testing with Deployment
 ```bash
-python run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml
+uv run run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml
 ```
 
 #### Deploy Only (Skip Testing)
 ```bash
-python deploy_server.py --config your_config.yaml
+uv run deploy_server.py --config your_config.yaml
 ```
 
 #### Test with Existing Server
 ```bash
-python run_auto_test.py --config your_config.yaml --skip-deployment
+uv run run_auto_test.py --config your_config.yaml --skip-deployment
 ```
 
 #### Batch Testing
@@ -112,9 +112,9 @@ llm-test --processes 4 --requests 10 --model_id "Qwen/Qwen3-235B-A22B-FP8" \
 
 ```bash
 # Start visualization server
-python start_viz_server.py
+uv run start_viz_server.py
 # or
-python -m llm_test_tool viz
+uv run -m llm_test_tool viz
 
 # Access web interface at: http://localhost:8000
 ```
@@ -144,25 +144,25 @@ The tool now supports automated testing with Docker deployment management:
 
 ```bash
 # Basic usage
-python run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml
+uv run run_auto_test.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml
 
 # With custom output directory
-python run_auto_test.py --config config.yaml --output-dir my_results
+uv run run_auto_test.py --config config.yaml --output-dir my_results
 
 # Dry run to see what tests would be executed
-python run_auto_test.py --config config.yaml --dry-run
+uv run run_auto_test.py --config config.yaml --dry-run
 
 # Verbose output for debugging
-python run_auto_test.py --config config.yaml --verbose
+uv run run_auto_test.py --config config.yaml --verbose
 
 # Force rerun all tests (ignore existing results)
-python run_auto_test.py --config config.yaml --force-rerun
+uv run run_auto_test.py --config config.yaml --force-rerun
 ```
 
 Or using the module directly:
 
 ```bash
-python -m llm_test_tool auto-test --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
+uv run -m llm_test_tool auto-test --config model_configs/vllm-v0.9.2/g6e.4xlarge/config.yaml --output-dir test_results
 ```
 
 ### Deployment Only (No Benchmarking)
@@ -171,25 +171,25 @@ For cases where you only want to deploy a server without running benchmarks:
 
 ```bash
 # Deploy a server
-python deploy_server.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml
+uv run deploy_server.py --config model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml
 
 # Show the Docker command without executing
-python deploy_server.py --config config.yaml --show-command
+uv run deploy_server.py --config config.yaml --show-command
 
 # Deploy without health check
-python deploy_server.py --config config.yaml --no-health-check
+uv run deploy_server.py --config config.yaml --no-health-check
 
 # Check deployment status
-python deploy_server.py --config config.yaml --status
+uv run deploy_server.py --config config.yaml --status
 
 # Stop a deployment
-python deploy_server.py --config config.yaml --stop
+uv run deploy_server.py --config config.yaml --stop
 ```
 
 Or using the module directly:
 
 ```bash
-python -m llm_test_tool deploy --config config.yaml
+uv run -m llm_test_tool deploy --config config.yaml
 ```
 
 ### Performance Visualization
@@ -198,9 +198,9 @@ For interactive performance analysis and comparison:
 
 ```bash
 # Start the visualization server
-python start_viz_server.py
+uv run start_viz_server.py
 # or
-python -m llm_test_tool viz
+uv run -m llm_test_tool viz
 
 # Access the web interface at: http://localhost:8000
 ```
@@ -405,7 +405,188 @@ app_args:
 
 #### Framework-Specific Examples
 
-**vLLM Configuration:**
+#### Real-World Configuration Examples
+
+**vLLM Configuration (Large Model with Tensor Parallelism):**
+
+```yaml
+deployment:
+  docker_image: "vllm/vllm-openai:v0.10.1+gptoss"
+  container_name: "vllm"
+  port: 8080
+  docker_params:
+    gpus: "all"                           # Use all available GPUs
+    shm-size: "1000g"                     # Large shared memory for multi-GPU
+    ipc: "host"                           # Host IPC for performance
+    network: "host"                       # Host networking
+    volume:
+      - "/opt/dlami/nvme/:/vllm-workspace/"  # Mount model storage
+  app_args:
+    model: "openai/gpt-oss-120b"          # 120B parameter model
+    trust-remote-code: true               # Allow custom model code
+    max-model-len: 32768                  # 32K context length
+    gpu-memory-utilization: 0.90          # Use 90% of GPU memory
+    tensor-parallel-size: 8               # Split across 8 GPUs
+    enable-reasoning: true                # Enable reasoning mode
+    reasoning-parser: "deepseek_r1"       # Reasoning output parser
+    tool-call-parser: "deepseek_v3"       # Tool calling parser
+    enable-auto-tool-choice: true         # Auto tool selection
+```
+
+**SGLang Configuration (Smaller Model):**
+
+```yaml
+deployment:
+  docker_image: "lmsysorg/sglang:v0.4.9.post4-cu126"
+  container_name: "sglang"
+  port: 8080
+  command: "python3 -m sglang.launch_server"  # Custom launch command
+  docker_params:
+    gpus: "all"
+    shm-size: "1000g"
+    ipc: "host"
+    network: "host"
+    volume:
+      - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
+  app_args:
+    host: "0.0.0.0"                       # Bind to all interfaces
+    model-path: "model/Qwen/Qwen3-14B-FP8"  # Local model path
+    trust-remote-code: true
+    tp-size: 1                            # Single GPU (14B model)
+    mem-fraction-static: 0.90             # SGLang memory setting
+    tool-call-parser: "qwen25"            # Qwen-specific parser
+    reasoning-parser: "deepseek-r1"
+```
+
+### Configuration File Sections Explained
+
+#### Docker Parameters (`docker_params`)
+
+Maps directly to `docker run` arguments:
+
+| Parameter | Description | Example Values |
+|-----------|-------------|----------------|
+| `gpus` | GPU access control | `"all"`, `"device=0,1"`, `"2"` |
+| `shm-size` | Shared memory size | `"1000g"`, `"32g"` |
+| `ipc` | IPC namespace | `"host"`, `"container:name"` |
+| `network` | Network mode | `"host"`, `"bridge"` |
+| `volume` | Volume mounts | `["/host:/container"]` |
+| `environment` | Environment variables | `{"VAR": "value"}` |
+| `memory` | Memory limit | `"64g"`, `"128g"` |
+| `cpus` | CPU limit | `"16"`, `"32"` |
+
+#### Application Arguments (`app_args`)
+
+Framework-specific server arguments:
+
+**Common vLLM Arguments:**
+| Parameter | Description | Typical Values |
+|-----------|-------------|----------------|
+| `model` | Model identifier | HuggingFace ID or path |
+| `tensor-parallel-size` | GPUs for tensor parallelism | 1, 2, 4, 8 |
+| `data-parallel-size` | Data parallel replicas | 1, 2, 4 |
+| `gpu-memory-utilization` | GPU memory fraction | 0.85, 0.90, 0.95 |
+| `max-model-len` | Maximum sequence length | 4096, 16384, 32768 |
+| `max-num-seqs` | Concurrent sequences | 128, 256, 512 |
+| `trust-remote-code` | Allow custom code | true, false |
+| `enable-reasoning` | Reasoning capabilities | true, false |
+
+**Common SGLang Arguments:**
+| Parameter | Description | Typical Values |
+|-----------|-------------|----------------|
+| `model-path` | Model path | Local or HuggingFace path |
+| `tp-size` | Tensor parallel size | 1, 2, 4, 8 |
+| `mem-fraction-static` | Memory allocation | 0.85, 0.90, 0.95 |
+| `host` | Bind address | "0.0.0.0", "127.0.0.1" |
+| `context-length` | Context window | 4096, 16384, 32768 |
+
+#### Test Matrix Configuration
+
+The test matrix creates comprehensive performance profiles:
+
+```yaml
+test_matrix:
+  input_tokens: [1600, 6400, 12800]      # Prompt lengths
+  output_tokens: [100, 400, 1000]        # Generation lengths  
+  processing_num: [1, 16, 32, 64, 128]   # Concurrency levels
+  random_tokens: [100, 1600, 6400]       # Caching test sizes
+```
+
+**Matrix Combinations:**
+- Total test cases = `len(input_tokens) × len(output_tokens) × len(processing_num) × len(random_tokens)`
+- Invalid combinations (where `random_tokens > input_tokens`) are automatically skipped
+- Each combination tests different aspects:
+  - **Short input + Low concurrency**: Latency optimization
+  - **Long input + High concurrency**: Throughput under load
+  - **Variable random tokens**: Prompt caching effectiveness
+
+#### Test Execution Settings
+
+```yaml
+test_config:
+  requests_per_process: 5     # Requests per concurrent process
+  warmup_requests: 1          # Warmup before measurement
+  cooldown_seconds: 5         # Wait between test scenarios
+```
+
+**Calculation Examples:**
+- With `processing_num: 32` and `requests_per_process: 5`
+- Total requests per test case: 32 × 5 = 160 requests
+- With warmup: 32 × 1 = 32 additional warmup requests
+
+### Configuration Best Practices
+
+#### GPU Memory Management
+```yaml
+# For large models, use conservative memory settings
+app_args:
+  gpu-memory-utilization: 0.85    # Leave headroom for CUDA operations
+  max-model-len: 16384            # Balance context vs memory usage
+```
+
+#### Multi-GPU Strategies
+```yaml
+# Tensor Parallelism: Best for large models
+app_args:
+  tensor-parallel-size: 8         # Split model across 8 GPUs
+
+# Data Parallelism: Best for high throughput
+app_args:
+  data-parallel-size: 4           # 4 model replicas
+  tensor-parallel-size: 2         # Each replica uses 2 GPUs
+```
+
+#### Performance Optimization
+```yaml
+# High-performance settings
+docker_params:
+  shm-size: "1000g"              # Large shared memory
+  ipc: "host"                    # Host IPC mode
+  network: "host"                # Host networking
+
+app_args:
+  max-num-seqs: 512              # High concurrency
+  block-size: 16                 # Optimal KV cache block size
+```
+
+### Troubleshooting Configuration Issues
+
+**Common Problems:**
+
+1. **Out of Memory**: Reduce `gpu-memory-utilization` or `max-model-len`
+2. **Slow Performance**: Increase `shm-size`, use `ipc: "host"`
+3. **Model Loading Fails**: Check `trust-remote-code: true` for custom models
+4. **Multi-GPU Issues**: Verify `tensor-parallel-size` matches available GPUs
+
+**Debug Configuration:**
+```yaml
+# Add verbose logging
+app_args:
+  log-level: "DEBUG"
+  
+# Show generated Docker command
+# Use: uv run deploy_server.py --config config.yaml --show-command
+```
 
 ```yaml
 deployment:
@@ -521,7 +702,7 @@ This creates a comprehensive performance profile across different load condition
 - `--force-rerun`: Force rerun all tests, ignoring existing results
 - `--dry-run`: Show what tests would be executed without running them
 
-Use `python run_auto_test.py --help` for full usage information.
+Use `uv run run_auto_test.py --help` for full usage information.
 
 ### Deployment Commands (`deploy_server.py`)
 
@@ -532,7 +713,7 @@ Use `python run_auto_test.py --help` for full usage information.
 - `--status`: Check the status of the deployment
 - `--verbose, -v`: Enable verbose output
 
-Use `python deploy_server.py --help` for full usage information.
+Use `uv run deploy_server.py --help` for full usage information.
 
 ## Automated Testing Features
 
