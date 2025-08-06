@@ -174,7 +174,7 @@ class ResultsDataProvider:
         """Get available test parameters for a specific combination"""
         if self.df is None or self.df.empty:
             return {}
-        
+        print(runtime, instance_type, model_name)
         filtered = self.df[
             (self.df['runtime'] == runtime) & 
             (self.df['instance_type'] == instance_type) & 

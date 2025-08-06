@@ -643,6 +643,9 @@
                 await loadTreeStructure();
                 setupFilterEventListeners();
                 
+                // Initially disable sliders since no model is selected
+                disableTokenSliders();
+                
                 // Set up initial slider event listeners
                 setupSliderEventListeners();
 
@@ -687,6 +690,9 @@
                 updateSelectedInfo();
                 updateComparisonList();
                 clearCharts();
+                
+                // Reset sliders to default values and disable them
+                disableTokenSliders();
 
                 // Reload tree structure
                 await loadTreeStructure();
@@ -851,7 +857,7 @@
                 // Update selected info display
                 updateSelectedInfo();
 
-                // Load token parameters for this selection
+                // Load token parameters for this selection (this will enable sliders)
                 await loadTokenParameters();
 
                 // Don't auto-check checkbox when clicking on model name
@@ -944,7 +950,7 @@
             if (!currentSelection) return;
 
             try {
-                const response = await fetch(getApiUrl(`/api/parameters?runtime=${currentSelection.runtime}&instance_type=${currentSelection.instance_type}&model_name=${encodeURIComponent(currentSelection.model_name)}`));
+                const response = await fetch(getApiUrl(`/api/parameters?runtime=${encodeURIComponent(currentSelection.runtime)}&instance_type=${encodeURIComponent(currentSelection.instance_type)}&model_name=${encodeURIComponent(currentSelection.model_name)}`));
                 const params = await response.json();
 
                 console.log('Loaded parameters:', params); // Debug log
@@ -1151,6 +1157,7 @@
 
             // Input tokens slider
             inputTokensSlider.addEventListener('input', function () {
+                if (this.disabled) return; // Don't process if slider is disabled
                 let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
                     value = findClosestAvailableValue(this.value, this.availableValues);
@@ -1163,6 +1170,7 @@
 
             // Output tokens slider
             outputTokensSlider.addEventListener('input', function () {
+                if (this.disabled) return; // Don't process if slider is disabled
                 let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
                     value = findClosestAvailableValue(this.value, this.availableValues);
@@ -1174,6 +1182,7 @@
 
             // Random tokens slider
             randomTokensSlider.addEventListener('input', function () {
+                if (this.disabled) return; // Don't process if slider is disabled
                 let value = parseInt(this.value);
                 if (this.availableValues && this.availableValues.length > 0) {
                     value = findClosestAvailableValue(this.value, this.availableValues);
@@ -1191,6 +1200,24 @@
             const target = parseInt(targetValue);
             return availableValues.reduce((prev, curr) => {
                 return Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev;
+            });
+        }
+
+        // Disable token sliders when no model is selected
+        function disableTokenSliders() {
+            const sliders = [
+                { id: 'input-tokens', valueId: 'input-tokens-value', defaultValue: 1600 },
+                { id: 'output-tokens', valueId: 'output-tokens-value', defaultValue: 400 },
+                { id: 'random-tokens', valueId: 'random-tokens-value', defaultValue: 1600 }
+            ];
+
+            sliders.forEach(slider => {
+                const sliderElement = document.getElementById(slider.id);
+                const valueElement = document.getElementById(slider.valueId);
+                
+                sliderElement.disabled = true;
+                sliderElement.value = slider.defaultValue;
+                valueElement.textContent = slider.defaultValue;
             });
         }
 
@@ -1470,6 +1497,11 @@
             document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
             });
+            
+            // Clear current selection and reset sliders to default values
+            currentSelection = null;
+            updateSelectedInfo();
+            disableTokenSliders();
 
             // Update URL with new state
             updateUrlWithState();
