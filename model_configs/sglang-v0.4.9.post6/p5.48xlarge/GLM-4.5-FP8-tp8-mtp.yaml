@@ -10,7 +10,6 @@ deployment:
     ipc: "host"
     network: "host"
     volume:
-      - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
       - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
   command: "python3 -m sglang.launch_server"
   # Universal application arguments
@@ -22,8 +21,8 @@ deployment:
     speculative-num-steps: 3
     speculative-eagle-topk: 1
     speculative-num-draft-tokens: 4
-    tp-size: 4
-    dp-size: 2
+    tp-size: 8
+    dp-size: 1
     mem-fraction-static: 0.90
     tool-call-parser: "qwen25"
     reasoning-parser: "deepseek-r1"

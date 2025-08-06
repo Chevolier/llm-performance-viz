@@ -21,17 +21,22 @@ def main():
                        help="Host to bind the server to (default: 0.0.0.0)")
     parser.add_argument("--root-path", type=str, default="",
                        help="Root path for deployment under a subdomain (e.g., /viz)")
+    parser.add_argument("--results-dir", "-r", type=str, default="archive_results",
+                       help="Directory containing test results (default: archive_results)")
     
     args = parser.parse_args()
     
-    # Set environment variable for root path so the FastAPI app can use it
+    # Set environment variables so the FastAPI app can use them
     if args.root_path:
         os.environ['ROOT_PATH'] = args.root_path.rstrip('/')
     
-    # Import app after setting environment variable
+    os.environ['RESULTS_DIR'] = args.results_dir
+    
+    # Import app after setting environment variables
     from llm_test_tool.viz_server import app
     
     print(f"Starting LLM Performance Visualization Server...")
+    print(f"Results directory: {args.results_dir}")
     if args.root_path:
         print(f"Root path: {args.root_path}")
         print(f"Access the visualization at: http://localhost:{args.port}{args.root_path}")

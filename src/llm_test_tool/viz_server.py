@@ -219,7 +219,9 @@ class CombinationInfo(BaseModel):
     id: str
 
 # Initialize data and price providers
-data_provider = ResultsDataProvider()
+# Get results directory from environment variable if set
+results_dir = os.environ.get('RESULTS_DIR', 'archive_results')
+data_provider = ResultsDataProvider(results_dir)
 price_provider = PriceProvider()
 
 

@@ -11,7 +11,8 @@
     "p4de.24xlarge": 27.44705,
     "p5.48xlarge": 55.04,
     "p5en.48xlarge": 63.296,
-    "p6-b200.48xlarge": 113.9328
+    "p6-b200.48xlarge": 113.9328,
+    "H20-141G": 48.618
   },
   "default_region": "us-east-1",
   "last_updated": "2025-01-30",

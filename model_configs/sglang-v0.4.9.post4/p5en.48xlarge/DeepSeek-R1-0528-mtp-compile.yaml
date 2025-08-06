@@ -10,7 +10,6 @@ deployment:
     ipc: "host"
     network: "host"
     volume:
-      - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
       - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
     env: 
       - "TORCHINDUCTOR_CACHE_DIR=/sgl-workspace/sglang/model/torchinductor_cache/deepseek-r1-0528/"

@@ -10,7 +10,6 @@ deployment:
     ipc: "host"
     network: "host"
     volume:
-      - "/efs/200005/.cache/huggingface/hub:/root/.cache/huggingface/hub"
       - "/opt/dlami/nvme/:/sgl-workspace/sglang/model"
   command: "python3 -m sglang.launch_server"
   # Universal application arguments
