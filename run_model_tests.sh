@@ -67,30 +67,27 @@ run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-Air-FP8-tp4dp2-m
 run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-FP8-tp8-mtp.yaml"
 
 # p5en.48xlarge
-# run_test "model_configs/vllm-0.10.1+gptoss/p5en.48xlarge/gpt-oss-120b-tp8.yaml" --skip-deployment
-# run_test "model_configs/vllm-0.10.1+gptoss/p5en.48xlarge/gpt-oss-120b-tp1.yaml" --skip-deployment
 
 run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-235B-A22B.yaml"
-exit
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml"
-# run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-Coder-480B-A35B-Instruct-FP8.yaml"
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
-# # run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp4dp2.yaml"
-# run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-Coder-480B-A35B-Instruct-FP8-deepgemm.yaml"
+run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-Coder-480B-A35B-Instruct-FP8.yaml"
+run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+run_test "model_configs/vllm-v0.9.2/p5en.48xlarge/Qwen3-Coder-480B-A35B-Instruct-FP8-deepgemm.yaml"
 
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528-mtp.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp4dp2.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp8ep8.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-Air-FP8-dp8-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-Air-FP8-tp2dp4-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-FP8-tp8-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-FP8-tp8.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5en.48xlarge/GLM-4.5-FP8-tp4dp2-mtp.yaml"
-run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/DeepSeek-R1-0528.yaml"
-run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B-FP8-tp4dp2.yaml"
-run_test "model_configs/sglang-v0.4.9.post4/p5en.48xlarge/Qwen3-235B-A22B.yaml"
+
 
 # p6-b200.48xlarge
-# run_test "model_configs/vllm-0.10.1+gptoss/p6-b200.48xlarge/gpt-oss-120b-dp8.yaml" --skip-deployment
+
 
 echo "=========================================="
 echo "All tests completed!"
