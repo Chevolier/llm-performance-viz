@@ -323,34 +323,75 @@ async def get_comparison_data(request: ComparisonRequest):
             instance_type = combo.get('instance_type', '')
             instance_price = price_provider.get_price(instance_type)
             
-            # Calculate cost metrics if we have a price
-            if instance_price and instance_price > 0:
-                for record in data:
-                    server_throughput = record.get('server_throughput', 0)
-                    requests_per_second = record.get('requests_per_second', 0)
-                    
+            # Calculate cost metrics and additional throughput metrics
+            for record in data:
+                # Get basic metrics
+                first_token_latency = record.get('first_token_latency_mean', 0)
+                end_to_end_latency = record.get('end_to_end_latency_mean', 0)
+                input_tokens = record.get('input_tokens', 0)
+                output_tokens = record.get('output_tokens', 0)
+                processes = record.get('processes', 1)  # Get concurrency level
+                requests_per_second = record.get('requests_per_second', 0)
+                server_throughput = record.get('server_throughput', 0)
+                
+                # Calculate input throughput (tokens/sec)
+                # Input throughput = (input_tokens * processes) / first_token_latency
+                if first_token_latency > 0 and input_tokens > 0:
+                    input_throughput = (input_tokens * processes) / first_token_latency * (requests_per_second / (processes / end_to_end_latency))
+                    record['input_throughput'] = input_throughput
+                else:
+                    record['input_throughput'] = 0
+                
+                # Calculate output throughput (tokens/sec) 
+                # Output latency = end_to_end_latency - first_token_latency
+                # Output throughput = (output_tokens * processes) / output_latency
+                output_latency = end_to_end_latency - first_token_latency
+                if output_latency > 0 and output_tokens > 0:
+                    output_throughput = (output_tokens * processes) / output_latency * (requests_per_second / (processes / end_to_end_latency))
+                    record['output_throughput'] = output_throughput
+                else:
+                    record['output_throughput'] = 0
+                
+                # Calculate cost metrics if we have a price
+                if instance_price and instance_price > 0:
+                    # Existing cost calculations
                     if server_throughput > 0:
-                        # Cost per million tokens = instance_price_per_hour / (server_throughput_tokens_per_second * 3600) * 1,000,000
-                        # Simplified: instance_price / server_throughput * 1,000,000 / 3600
                         cost_per_million_tokens = (instance_price / server_throughput) * 1000000 / 3600
                         record['cost_per_million_tokens'] = cost_per_million_tokens
                     else:
                         record['cost_per_million_tokens'] = 0
                     
                     if requests_per_second > 0:
-                        # Cost per 1k requests = instance_price_per_hour / (requests_per_second * 3600) * 1000
-                        # Simplified: instance_price / requests_per_second * 1000 / 3600
                         cost_per_1k_requests = (instance_price / requests_per_second) * 1000 / 3600
                         record['cost_per_1k_requests'] = cost_per_1k_requests
                     else:
                         record['cost_per_1k_requests'] = 0
                     
+                    # Calculate input token pricing
+                    # Cost per million input tokens = instance_price_per_hour / (input_throughput_tokens_per_second * 3600) * 1,000,000
+                    input_throughput_val = record.get('input_throughput', 0)
+                    if input_throughput_val > 0:
+                        cost_per_million_input_tokens = (instance_price / input_throughput_val) * 1000000 / 3600
+                        record['cost_per_million_input_tokens'] = cost_per_million_input_tokens
+                    else:
+                        record['cost_per_million_input_tokens'] = 0
+                    
+                    # Calculate output token pricing
+                    # Cost per million output tokens = instance_price_per_hour / (output_throughput_tokens_per_second * 3600) * 1,000,000
+                    output_throughput_val = record.get('output_throughput', 0)
+                    if output_throughput_val > 0:
+                        cost_per_million_output_tokens = (instance_price / output_throughput_val) * 1000000 / 3600
+                        record['cost_per_million_output_tokens'] = cost_per_million_output_tokens
+                    else:
+                        record['cost_per_million_output_tokens'] = 0
+                    
                     record['instance_price_used'] = instance_price
-            else:
-                # Set cost to 0 if no price available
-                for record in data:
+                else:
+                    # Set cost to 0 if no price available
                     record['cost_per_million_tokens'] = 0
                     record['cost_per_1k_requests'] = 0
+                    record['cost_per_million_input_tokens'] = 0
+                    record['cost_per_million_output_tokens'] = 0
                     record['instance_price_used'] = 0
             
             result.append({

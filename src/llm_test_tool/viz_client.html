@@ -539,6 +539,102 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Chart settings styles */
+        .chart-setting {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+
+        .chart-setting input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.1);
+            cursor: pointer;
+        }
+
+        .chart-setting label {
+            font-size: 12px;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+            line-height: 1.2;
+        }
+
+        .chart-setting input[type="checkbox"]:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .chart-setting label.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .chart-settings-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .chart-settings-buttons button {
+            flex: 1;
+            padding: 4px 8px;
+            font-size: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .chart-settings-buttons button:hover {
+            background: #e9ecef;
+        }
+
+        .settings-toggle-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .settings-toggle-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .settings-toggle-btn:active {
+            background: #dee2e6;
+            transform: scale(0.95);
+        }
+
+        .settings-toggle-icon {
+            font-size: 12px;
+            color: #495057;
+            transition: transform 0.3s;
+        }
+
+        .settings-toggle-btn.collapsed .settings-toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .chart-settings-content {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .chart-settings-content.expanded {
+            display: block;
+        }
     </style>
 </head>
 
@@ -605,6 +701,18 @@
 
 
 
+        <div class="tree-container">
+            <div class="tree-header">
+                <div class="tree-title">Chart Display Settings</div>
+                <button class="settings-toggle-btn" id="settings-toggle" title="Toggle chart settings">
+                    <span class="settings-toggle-icon">▼</span>
+                </button>
+            </div>
+            <div id="chart-settings" class="chart-settings-content expanded">
+                <!-- Chart visibility checkboxes will be populated here -->
+            </div>
+        </div>
+
         <div class="copyleft">
             <a href="https://github.com/yytdfc/llm-performance-viz"
                 target="_blank">https://github.com/yytdfc/llm-performance-viz</a>
@@ -631,6 +739,7 @@
         let selectedCombinations = [];
         let charts = {};
         let currentSelection = null;
+        let chartVisibility = {};
 
         // Color palette for different combinations
         const colors = [
@@ -1359,12 +1468,16 @@
             const metrics = [
                 { key: 'first_token_latency_mean', title: 'First Token Latency (seconds)' },
                 { key: 'output_tokens_per_second_mean', title: 'Output Tokens Per Second' },
+                { key: 'input_throughput', title: 'Input Throughput (tokens/sec)' },
+                { key: 'output_throughput', title: 'Output Throughput (tokens/sec)' },
                 { key: 'server_throughput', title: 'Server Throughput (total tokens/sec)' },
                 { key: 'end_to_end_latency_mean', title: 'End-to-End Latency (seconds)' },
                 { key: 'requests_per_second', title: 'Request Rate (requests/sec)' },
                 { key: 'success_rate', title: 'Success Rate (%)' },
                 { key: 'cost_per_million_tokens', title: 'Cost per Million Tokens ($)' },
-                { key: 'cost_per_1k_requests', title: 'Cost per 1k Requests ($)' }
+                { key: 'cost_per_1k_requests', title: 'Cost per 1k Requests ($)' },
+                { key: 'cost_per_million_input_tokens', title: 'Cost per Million Input Tokens ($)' },
+                { key: 'cost_per_million_output_tokens', title: 'Cost per Million Output Tokens ($)' }
             ];
 
             let csvContent = `Export Date: ${new Date().toISOString()}\n\n`;
@@ -1551,26 +1664,39 @@
             const chartTypes = [
                 { id: 'first-token-latency', title: 'First Token Latency vs Concurrency', metric: 'first_token_latency_mean', unit: 'seconds' },
                 { id: 'output-tokens-per-second', title: 'Output Tokens Per Second vs Concurrency', metric: 'output_tokens_per_second_mean', unit: 'tokens/sec' },
+                { id: 'input-throughput', title: 'Input Throughput vs Concurrency', metric: 'input_throughput', unit: 'tokens/sec' },
+                { id: 'output-throughput', title: 'Output Throughput vs Concurrency', metric: 'output_throughput', unit: 'tokens/sec' },
                 { id: 'server-throughput', title: 'Server Throughput vs Concurrency', metric: 'server_throughput', unit: 'total tokens/sec' },
                 { id: 'end-to-end-latency', title: 'End-to-End Latency vs Concurrency', metric: 'end_to_end_latency_mean', unit: 'seconds' },
                 { id: 'requests-per-second', title: 'Request Rate vs Concurrency', metric: 'requests_per_second', unit: 'requests/sec' },
                 { id: 'success-rate', title: 'Success Rate vs Concurrency', metric: 'success_rate', unit: '%' },
                 { id: 'cost-per-million-tokens', title: 'Cost per Million Tokens vs Concurrency', metric: 'cost_per_million_tokens', unit: '$' },
-                { id: 'cost-per-1k-requests', title: 'Cost per 1k Requests vs Concurrency', metric: 'cost_per_1k_requests', unit: '$' }
+                { id: 'cost-per-1k-requests', title: 'Cost per 1k Requests vs Concurrency', metric: 'cost_per_1k_requests', unit: '$' },
+                { id: 'cost-per-million-input-tokens', title: 'Cost per Million Input Tokens vs Concurrency', metric: 'cost_per_million_input_tokens', unit: '$' },
+                { id: 'cost-per-million-output-tokens', title: 'Cost per Million Output Tokens vs Concurrency', metric: 'cost_per_million_output_tokens', unit: '$' }
             ];
 
-            chartTypes.forEach(chartType => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'chart-wrapper';
-                wrapper.innerHTML = `
-                    <div class="chart-title">${chartType.title}</div>
-                    <div class="chart-container">
-                        <canvas id="${chartType.id}"></canvas>
-                    </div>
-                `;
-                container.appendChild(wrapper);
+            // Initialize chart settings if not already done
+            if (Object.keys(chartVisibility).length === 0) {
+                initializeChartSettings(chartTypes);
+            }
 
-                createChart(chartType.id, chartType.title, chartType.metric, chartType.unit, data);
+            chartTypes.forEach(chartType => {
+                // Only create chart if it's visible
+                if (chartVisibility[chartType.id] !== false) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'chart-wrapper';
+                    wrapper.id = `wrapper-${chartType.id}`;
+                    wrapper.innerHTML = `
+                        <div class="chart-title">${chartType.title}</div>
+                        <div class="chart-container">
+                            <canvas id="${chartType.id}"></canvas>
+                        </div>
+                    `;
+                    container.appendChild(wrapper);
+
+                    createChart(chartType.id, chartType.title, chartType.metric, chartType.unit, data);
+                }
             });
         }
 
@@ -1660,6 +1786,116 @@
                     }
                 }
             });
+        }
+
+        // Initialize chart settings
+        function initializeChartSettings(chartTypes) {
+            const settingsContainer = document.getElementById('chart-settings');
+            
+            // Initialize visibility state (all visible by default)
+            chartTypes.forEach(chartType => {
+                if (chartVisibility[chartType.id] === undefined) {
+                    chartVisibility[chartType.id] = true;
+                }
+            });
+
+            // Create checkboxes for each chart
+            settingsContainer.innerHTML = '';
+            chartTypes.forEach(chartType => {
+                const setting = document.createElement('div');
+                setting.className = 'chart-setting';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `chart-${chartType.id}`;
+                checkbox.checked = chartVisibility[chartType.id];
+                checkbox.addEventListener('change', () => toggleChart(chartType.id));
+                
+                const label = document.createElement('label');
+                label.htmlFor = `chart-${chartType.id}`;
+                label.textContent = chartType.title.replace(' vs Concurrency', '');
+                
+                setting.appendChild(checkbox);
+                setting.appendChild(label);
+                settingsContainer.appendChild(setting);
+            });
+
+            // Add control buttons
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'chart-settings-buttons';
+            buttonsDiv.innerHTML = `
+                <button onclick="showAllCharts()">Show All</button>
+                <button onclick="hideAllCharts()">Hide All</button>
+            `;
+            settingsContainer.appendChild(buttonsDiv);
+        }
+
+        // Toggle individual chart visibility
+        function toggleChart(chartId) {
+            chartVisibility[chartId] = !chartVisibility[chartId];
+            
+            // Update the checkbox state
+            const checkbox = document.getElementById(`chart-${chartId}`);
+            if (checkbox) {
+                checkbox.checked = chartVisibility[chartId];
+            }
+            
+            // Regenerate charts if we have data
+            if (selectedCombinations.length > 0) {
+                generateCharts();
+            }
+            
+            // Update URL with new state
+            updateUrlWithState();
+        }
+
+        // Show all charts
+        function showAllCharts() {
+            Object.keys(chartVisibility).forEach(chartId => {
+                chartVisibility[chartId] = true;
+                const checkbox = document.getElementById(`chart-${chartId}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+            
+            if (selectedCombinations.length > 0) {
+                generateCharts();
+            }
+            updateUrlWithState();
+        }
+
+        // Hide all charts
+        function hideAllCharts() {
+            Object.keys(chartVisibility).forEach(chartId => {
+                chartVisibility[chartId] = false;
+                const checkbox = document.getElementById(`chart-${chartId}`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+            });
+            
+            if (selectedCombinations.length > 0) {
+                generateCharts();
+            }
+            updateUrlWithState();
+        }
+
+        // Toggle chart settings visibility
+        function toggleChartSettings() {
+            const settingsContent = document.getElementById('chart-settings');
+            const toggleBtn = document.getElementById('settings-toggle');
+            const toggleIcon = toggleBtn.querySelector('.settings-toggle-icon');
+            
+            if (settingsContent.classList.contains('expanded')) {
+                settingsContent.classList.remove('expanded');
+                toggleBtn.classList.add('collapsed');
+                toggleIcon.textContent = '▶';
+            } else {
+                settingsContent.classList.add('expanded');
+                toggleBtn.classList.remove('collapsed');
+                toggleIcon.textContent = '▼';
+            }
         }
 
         // Clear all charts
@@ -1760,6 +1996,14 @@
             if (filterClear) {
                 filterClear.style.display = 'none';
             }
+
+            // Settings toggle event
+            const settingsToggle = document.getElementById('settings-toggle');
+            if (settingsToggle) {
+                settingsToggle.addEventListener('click', function () {
+                    toggleChartSettings();
+                });
+            }
         }
 
         // Filter tree based on search text
@@ -1837,6 +2081,7 @@
             // Clear existing parameters
             url.searchParams.delete('combinations');
             url.searchParams.delete('filter');
+            url.searchParams.delete('charts');
 
             // Add current combinations
             if (selectedCombinations.length > 0) {
@@ -1857,7 +2102,18 @@
                 url.searchParams.set('filter', filterInput.value.trim());
             }
 
-
+            // Add chart visibility settings (only if some charts are hidden or settings are collapsed)
+            const hiddenCharts = Object.keys(chartVisibility).filter(chartId => chartVisibility[chartId] === false);
+            const settingsContent = document.getElementById('chart-settings');
+            const settingsCollapsed = settingsContent && !settingsContent.classList.contains('expanded');
+            
+            if (hiddenCharts.length > 0 || settingsCollapsed) {
+                const chartState = {
+                    visibility: chartVisibility,
+                    settingsExpanded: !settingsCollapsed
+                };
+                url.searchParams.set('charts', btoa(JSON.stringify(chartState)));
+            }
 
             // Update URL without page reload
             window.history.replaceState({}, '', url);
@@ -1865,6 +2121,39 @@
 
         function restoreStateFromUrl() {
             const url = new URL(window.location);
+
+            // Restore chart visibility settings
+            const chartsParam = url.searchParams.get('charts');
+            if (chartsParam) {
+                try {
+                    const chartState = JSON.parse(atob(chartsParam));
+                    
+                    // Handle both old format (direct visibility object) and new format (with settings state)
+                    if (chartState.visibility) {
+                        chartVisibility = chartState.visibility;
+                        
+                        // Restore settings panel state
+                        if (chartState.settingsExpanded === false) {
+                            setTimeout(() => {
+                                const settingsContent = document.getElementById('chart-settings');
+                                const toggleBtn = document.getElementById('settings-toggle');
+                                const toggleIcon = toggleBtn.querySelector('.settings-toggle-icon');
+                                
+                                if (settingsContent && toggleBtn && toggleIcon) {
+                                    settingsContent.classList.remove('expanded');
+                                    toggleBtn.classList.add('collapsed');
+                                    toggleIcon.textContent = '▶';
+                                }
+                            }, 100);
+                        }
+                    } else {
+                        // Old format - just visibility settings
+                        chartVisibility = chartState;
+                    }
+                } catch (error) {
+                    console.warn('Failed to restore chart settings from URL:', error);
+                }
+            }
 
             // Restore filter
             const filter = url.searchParams.get('filter');
