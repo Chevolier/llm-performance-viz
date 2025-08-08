@@ -213,6 +213,8 @@ You can add the `--show-command` parameter to dry-run and show the Docker deploy
 #### Test with Existing Server
 ```bash
 uv run run_auto_test.py --config your_config.yaml --skip-deployment
+
+nohup uv run run_auto_test.py --config model_configs/vllm-0.10.1+gptoss/p5en.48xlarge/gpt-oss-120b-tp8.yaml --skip-deployment > logs/test.out 2>&1 &
 ```
 
 #### Automated Testing with Deployment
@@ -227,6 +229,8 @@ This runs a single test configuration and saves results in a structured format t
 ```bash
 # Run single test
 ./run_single_test.sh "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+
+./run_single_test.sh "model_configs/vllm-0.10.1+gptoss/p5en.48xlarge/gpt-oss-20b-tp8.yaml" --skip-deployment
 ```
 
 

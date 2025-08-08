@@ -12,7 +12,7 @@ deployment:
       - "/opt/dlami/nvme/:/vllm-workspace/"
   # Universal application arguments
   app_args:
-    model: "/home/ec2-user/SageMaker/efs/Models/gpt-oss-120b"
+    model: "/home/ec2-user/SageMaker/efs/Models/gpt-oss-20b"
     trust-remote-code: true
     max-model-len: 32768
     gpu-memory-utilization: 0.90
