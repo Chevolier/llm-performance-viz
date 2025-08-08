@@ -222,6 +222,8 @@ uv run run_auto_test.py --config model_configs/vllm-v0.9.2/p5.48xlarge/Qwen3-235
 ```bash
 # Run single test
 ./run_single_test.sh "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+
+./run_single_test.sh "model_configs/vllm-0.10.1+gptoss/p5.48xlarge/gpt-oss-120b-tp1.yaml" --skip-deployment
 ```
 
 #### 批量测试
