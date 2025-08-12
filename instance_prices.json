@@ -1,5 +1,12 @@
 {
   "aws_ec2_prices": {
+    "g5.2xlarge": 1.2120,
+    "g5.4xlarge": 1.6240,
+    "g5.8xlarge": 2.4480,
+    "g5.12xlarge": 5.6720,
+    "g5.16xlarge": 4.0960,
+    "g5.24xlarge": 8.1440,
+    "g5.48xlarge": 16.2880,
     "g6e.2xlarge": 2.24208,
     "g6e.4xlarge": 3.00424,
     "g6e.8xlarge": 4.52856,
@@ -15,9 +22,10 @@
     "p6-b200.48xlarge": 65.125,
     "H20-141G": 48.618
   },
-  "default_region": "us-east-1",
-  "last_updated": "2025-01-30",
+  "default_region": "us-west-2",
+  "last_updated": "2025-08-12",
   "notes": {
+    "g5": "NVIDIA A10G GPU instances - good for inference workloads",
     "g6e": "NVIDIA L40s GPU instances - good for inference workloads",
     "p4d": "NVIDIA A100 GPU instances - high performance training and inference",
     "p4de": "NVIDIA A100 GPU instances - high performance training and inference",

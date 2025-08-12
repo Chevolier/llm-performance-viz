@@ -17,10 +17,6 @@ deployment:
     max-model-len: 32768
     gpu-memory-utilization: 0.90
     tensor-parallel-size: 8
-    enable-reasoning: true
-    reasoning-parser: "deepseek_r1"
-    tool-call-parser: "deepseek_v3" 
-    enable-auto-tool-choice: true
 
 test_matrix:
   input_tokens: [1600, 6400, 12800]

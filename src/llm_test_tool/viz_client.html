@@ -799,6 +799,92 @@
             '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
         ];
 
+        // Simplified Analytics functions
+        class Analytics {
+            constructor() {
+                this.clientId = window.CLIENT_ID || this.generateClientId();
+                this.eventQueue = [];
+                this.isOnline = navigator.onLine;
+                
+                // Set up basic event listeners
+                this.setupEventListeners();
+            }
+            
+            generateClientId() {
+                // Simple client ID generation
+                const clientId = 'client_' + Math.random().toString(36).substr(2, 16);
+                return clientId;
+            }
+            
+            setupEventListeners() {
+                // Track online/offline status for event queue management
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    this.flushEventQueue();
+                });
+                
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                });
+            }
+            
+            async logEvent(eventType, data = {}) {
+                const event = {
+                    event_type: eventType,
+                    data: {
+                        ...data,
+                        timestamp: new Date().toISOString(),
+                        client_id: this.clientId
+                    }
+                };
+                
+                if (this.isOnline) {
+                    try {
+                        await fetch(getApiUrl('/api/analytics'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Client-ID': this.clientId
+                            },
+                            body: JSON.stringify(event)
+                        });
+                    } catch (error) {
+                        console.warn('Failed to send analytics event:', error);
+                        this.eventQueue.push(event);
+                    }
+                } else {
+                    this.eventQueue.push(event);
+                }
+            }
+            
+            async flushEventQueue() {
+                if (!this.isOnline || this.eventQueue.length === 0) return;
+                
+                const events = [...this.eventQueue];
+                this.eventQueue = [];
+                
+                for (const event of events) {
+                    try {
+                        await fetch(getApiUrl('/api/analytics'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Client-ID': this.clientId
+                            },
+                            body: JSON.stringify(event)
+                        });
+                    } catch (error) {
+                        console.warn('Failed to flush analytics event:', error);
+                        this.eventQueue.push(event);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Initialize analytics
+        const analytics = new Analytics();
+
         // Initialize the application
         async function init() {
             try {
@@ -827,8 +913,9 @@
         }
 
         // Load tree structure data
-        async function loadTreeStructure() {
-            const response = await fetch(getApiUrl('/api/tree-structure'));
+        async function loadTreeStructure(reload = false) {
+            const url = reload ? getApiUrl('/api/tree-structure?reload=true') : getApiUrl('/api/tree-structure');
+            const response = await fetch(url);
             const data = await response.json();
             treeData = data.tree;
             renderTree();
@@ -856,8 +943,8 @@
                 // Reset sliders to default values and disable them
                 disableTokenSliders();
 
-                // Reload tree structure
-                await loadTreeStructure();
+                // Reload tree structure with reload=true to refresh from disk
+                await loadTreeStructure(true);
 
                 // Clear any active filter
                 const filterInput = document.getElementById('tree-filter');
@@ -1072,10 +1159,17 @@
                     updateComparisonList();
                     generateCharts();
                     updateUrlWithState();
+                    
+                    // Log chart addition via checkbox (key metric)
+                    analytics.logEvent('chart_added_successfully', combination);
                 }
             } else {
                 // Remove from comparison
                 const modelKey = `${node.runtime}-${node.instance_type}-${node.model_name}`;
+                const removedCombinations = selectedCombinations.filter(c =>
+                    `${c.runtime}-${c.instance_type}-${c.model_name}` === modelKey
+                );
+                
                 selectedCombinations = selectedCombinations.filter(c =>
                     `${c.runtime}-${c.instance_type}-${c.model_name}` !== modelKey
                 );
@@ -1087,6 +1181,11 @@
                     clearCharts();
                 }
                 updateUrlWithState();
+                
+                // Log chart removal via checkbox (for completeness)
+                removedCombinations.forEach(combo => {
+                    analytics.logEvent('chart_removed', combo);
+                });
             }
         }
 
@@ -1162,6 +1261,8 @@
             // Update the corresponding checkbox
             updateModelCheckboxStates();
 
+            // Log successful chart addition (key metric)
+            analytics.logEvent('chart_added_successfully', combination);
             showSuccess('Model added to comparison successfully!');
         }
 
@@ -1694,6 +1795,9 @@
             const removedCombo = selectedCombinations[index];
             selectedCombinations.splice(index, 1);
             updateComparisonList();
+            
+            // Log chart removal (for completeness, but not counted in additions)
+            analytics.logEvent('chart_removed', removedCombo);
 
             // Update corresponding checkbox
             const modelKey = `${removedCombo.runtime}-${removedCombo.instance_type}-${removedCombo.model_name}`;
