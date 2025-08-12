@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GCR XC Perf</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script
         src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -635,6 +636,49 @@
         .chart-settings-content.expanded {
             display: block;
         }
+
+        /* Usage guide styles */
+        .usage-guide {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .usage-item {
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .usage-item:last-of-type {
+            border-bottom: none;
+            margin-bottom: 5px;
+        }
+
+        .usage-item strong {
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .usage-note {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #1565c0;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .usage-note em {
+            font-style: normal;
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -642,6 +686,13 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>🚀 GCR XC Perf</h2>
+        </div>
+
+        <div class="tree-container">
+            <div class="tree-title">
+                <a href="https://quip-amazon.com/LMZOAHUpmrrc/-GCR-XC-Perf-" target="_blank"
+                    style="color: #007bff; text-decoration: none;">📖 Usage Guide quip ↗</a>
+            </div>
         </div>
 
         <div class="tree-container">
@@ -662,13 +713,14 @@
             </div>
 
             <div class="button-group" style="margin-top: 15px;">
+                <button class="btn btn-success" id="add-chart-btn" onclick="addCurrentToChart()"
+                    title="Add current model with token settings to comparison" disabled>
+                    Add Chart
+                </button>
                 <button class="btn btn-primary" onclick="exportData()" title="Download raw data as JSON">
                     Export Data
                 </button>
                 <button class="btn btn-secondary" onclick="clearComparison()">Clear All</button>
-                <button class="btn btn-success" onclick="copyShareableUrl()" title="Copy shareable URL to clipboard">
-                    Share
-                </button>
             </div>
         </div>
 
@@ -752,10 +804,10 @@
             try {
                 await loadTreeStructure();
                 setupFilterEventListeners();
-                
+
                 // Initially disable sliders since no model is selected
                 disableTokenSliders();
-                
+
                 // Set up initial slider event listeners
                 setupSliderEventListeners();
 
@@ -800,7 +852,7 @@
                 updateSelectedInfo();
                 updateComparisonList();
                 clearCharts();
-                
+
                 // Reset sliders to default values and disable them
                 disableTokenSliders();
 
@@ -873,7 +925,7 @@
                 checkbox.type = 'checkbox';
                 checkbox.className = 'tree-checkbox';
                 checkbox.disabled = false; // Enable by default for one-click functionality
-                
+
                 // Add checkbox event handler
                 checkbox.addEventListener('change', (e) => {
                     e.stopPropagation();
@@ -1024,11 +1076,11 @@
             } else {
                 // Remove from comparison
                 const modelKey = `${node.runtime}-${node.instance_type}-${node.model_name}`;
-                selectedCombinations = selectedCombinations.filter(c => 
+                selectedCombinations = selectedCombinations.filter(c =>
                     `${c.runtime}-${c.instance_type}-${c.model_name}` !== modelKey
                 );
                 updateComparisonList();
-                
+
                 if (selectedCombinations.length > 0) {
                     generateCharts();
                 } else {
@@ -1042,6 +1094,7 @@
         function updateSelectedInfo() {
             const selectedInfo = document.getElementById('selected-info');
             const selectedText = document.getElementById('selected-text');
+            const addChartBtn = document.getElementById('add-chart-btn');
 
             if (currentSelection) {
                 selectedText.innerHTML = `
@@ -1050,9 +1103,66 @@
                     <strong>Model:</strong> ${currentSelection.model_name}
                 `;
                 selectedInfo.style.display = 'block';
+
+                // Enable the Add Chart button when a model is selected
+                if (addChartBtn) {
+                    addChartBtn.disabled = false;
+                }
             } else {
                 selectedInfo.style.display = 'none';
+
+                // Disable the Add Chart button when no model is selected
+                if (addChartBtn) {
+                    addChartBtn.disabled = true;
+                }
             }
+        }
+
+        // Add current selection to chart comparison
+        function addCurrentToChart() {
+            if (!currentSelection) {
+                showError('Please select a model first.');
+                return;
+            }
+
+            const inputTokens = parseInt(document.getElementById('input-tokens').value);
+            const outputTokens = parseInt(document.getElementById('output-tokens').value);
+            const randomTokens = parseInt(document.getElementById('random-tokens').value);
+
+            const combination = {
+                runtime: currentSelection.runtime,
+                instance_type: currentSelection.instance_type,
+                model_name: currentSelection.model_name,
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                random_tokens: randomTokens
+            };
+
+            // Check if combination already exists
+            const exists = selectedCombinations.some(c =>
+                c.runtime === combination.runtime &&
+                c.instance_type === combination.instance_type &&
+                c.model_name === combination.model_name &&
+                c.input_tokens === combination.input_tokens &&
+                c.output_tokens === combination.output_tokens &&
+                c.random_tokens === combination.random_tokens
+            );
+
+            if (exists) {
+                showError('This model with these token settings is already in the comparison.');
+                return;
+            }
+
+            // Add to comparison
+            selectedCombinations.push(combination);
+            updateComparisonList();
+            generateCharts();
+            updateUrlWithState();
+
+            // Update the corresponding checkbox
+            updateModelCheckboxStates();
+
+            showSuccess('Model added to comparison successfully!');
         }
 
         // Load token parameters for the current selection
@@ -1073,7 +1183,7 @@
             } catch (error) {
                 console.error('Failed to load parameters:', error); // Debug log
                 showError('Failed to load parameters: ' + error.message);
-                
+
                 // Enable sliders with default ranges if API fails
                 enableSlidersWithDefaults();
             }
@@ -1090,13 +1200,13 @@
             sliders.forEach(slider => {
                 const sliderElement = document.getElementById(slider.id);
                 const valueElement = document.getElementById(slider.id + '-value');
-                
+
                 sliderElement.disabled = false;
                 sliderElement.min = slider.min;
                 sliderElement.max = slider.max;
                 sliderElement.value = slider.default;
                 valueElement.textContent = slider.default;
-                
+
                 // Set available values to allow any value in range
                 sliderElement.availableValues = [];
                 for (let i = slider.min; i <= slider.max; i += 100) {
@@ -1113,10 +1223,10 @@
             document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
                 const treeItem = checkbox.closest('.tree-item');
                 const treeNode = findNodeFromTreeItem(treeItem);
-                
+
                 if (treeNode && treeNode.type === 'model') {
                     const modelKey = `${treeNode.runtime}-${treeNode.instance_type}-${treeNode.model_name}`;
-                    const isInComparison = selectedCombinations.some(c => 
+                    const isInComparison = selectedCombinations.some(c =>
                         `${c.runtime}-${c.instance_type}-${c.model_name}` === modelKey
                     );
                     checkbox.checked = isInComparison;
@@ -1135,10 +1245,10 @@
                     console.warn('Failed to parse node data:', e);
                 }
             }
-            
+
             // Fallback to the old method if no data attribute found
             const label = treeItem.querySelector('.tree-label').textContent;
-            
+
             // Search through tree data to find matching node
             function searchTree(nodes) {
                 for (const node of nodes) {
@@ -1152,7 +1262,7 @@
                 }
                 return null;
             }
-            
+
             return searchTree(treeData);
         }
 
@@ -1324,11 +1434,17 @@
             sliders.forEach(slider => {
                 const sliderElement = document.getElementById(slider.id);
                 const valueElement = document.getElementById(slider.valueId);
-                
+
                 sliderElement.disabled = true;
                 sliderElement.value = slider.defaultValue;
                 valueElement.textContent = slider.defaultValue;
             });
+
+            // Disable Add Chart button when sliders are disabled
+            const addChartBtn = document.getElementById('add-chart-btn');
+            if (addChartBtn) {
+                addChartBtn.disabled = true;
+            }
         }
 
         // Update random tokens max value based on input tokens
@@ -1435,7 +1551,7 @@
             // Create and download the CSV file
             const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(dataBlob);
-            
+
             const link = document.createElement('a');
             link.href = url;
             const now = new Date();
@@ -1506,9 +1622,9 @@
             // Generate CSV for each metric
             metrics.forEach((metric, metricIndex) => {
                 if (metricIndex > 0) csvContent += '\n';
-                
+
                 csvContent += `${metric.title}\n`;
-                
+
                 // Header row: Concurrency, Model1, Model2, ...
                 const headerRow = ['Concurrency', ...modelLabels.map(escapeCSVValue)];
                 csvContent += headerRow.join(',') + '\n';
@@ -1516,7 +1632,7 @@
                 // Data rows
                 sortedConcurrencyLevels.forEach(concurrency => {
                     const row = [concurrency];
-                    
+
                     data.forEach(item => {
                         const dataPoint = item.data.find(d => d.processes === concurrency);
                         if (dataPoint && dataPoint[metric.key] !== undefined) {
@@ -1531,7 +1647,7 @@
                             row.push(''); // Empty cell if no data
                         }
                     });
-                    
+
                     // Join row with proper escaping - only escape non-numeric values
                     const escapedRow = row.map((val, index) => {
                         if (index === 0 || val === '' || typeof val === 'number') {
@@ -1541,7 +1657,7 @@
                     });
                     csvContent += escapedRow.join(',') + '\n';
                 });
-                
+
                 csvContent += '\n'; // Extra line between metric blocks
             });
 
@@ -1584,7 +1700,7 @@
             document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
                 const treeItem = checkbox.closest('.tree-item');
                 const treeNode = findNodeFromTreeItem(treeItem);
-                
+
                 if (treeNode && `${treeNode.runtime}-${treeNode.instance_type}-${treeNode.model_name}` === modelKey) {
                     checkbox.checked = false;
                 }
@@ -1611,7 +1727,7 @@
             document.querySelectorAll('.tree-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
             });
-            
+
             // Clear current selection and reset sliders to default values
             currentSelection = null;
             updateSelectedInfo();
@@ -1791,7 +1907,7 @@
         // Initialize chart settings
         function initializeChartSettings(chartTypes) {
             const settingsContainer = document.getElementById('chart-settings');
-            
+
             // Initialize visibility state (all visible by default)
             chartTypes.forEach(chartType => {
                 if (chartVisibility[chartType.id] === undefined) {
@@ -1804,17 +1920,17 @@
             chartTypes.forEach(chartType => {
                 const setting = document.createElement('div');
                 setting.className = 'chart-setting';
-                
+
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = `chart-${chartType.id}`;
                 checkbox.checked = chartVisibility[chartType.id];
                 checkbox.addEventListener('change', () => toggleChart(chartType.id));
-                
+
                 const label = document.createElement('label');
                 label.htmlFor = `chart-${chartType.id}`;
                 label.textContent = chartType.title.replace(' vs Concurrency', '');
-                
+
                 setting.appendChild(checkbox);
                 setting.appendChild(label);
                 settingsContainer.appendChild(setting);
@@ -1833,18 +1949,18 @@
         // Toggle individual chart visibility
         function toggleChart(chartId) {
             chartVisibility[chartId] = !chartVisibility[chartId];
-            
+
             // Update the checkbox state
             const checkbox = document.getElementById(`chart-${chartId}`);
             if (checkbox) {
                 checkbox.checked = chartVisibility[chartId];
             }
-            
+
             // Regenerate charts if we have data
             if (selectedCombinations.length > 0) {
                 generateCharts();
             }
-            
+
             // Update URL with new state
             updateUrlWithState();
         }
@@ -1858,7 +1974,7 @@
                     checkbox.checked = true;
                 }
             });
-            
+
             if (selectedCombinations.length > 0) {
                 generateCharts();
             }
@@ -1874,7 +1990,7 @@
                     checkbox.checked = false;
                 }
             });
-            
+
             if (selectedCombinations.length > 0) {
                 generateCharts();
             }
@@ -1886,7 +2002,7 @@
             const settingsContent = document.getElementById('chart-settings');
             const toggleBtn = document.getElementById('settings-toggle');
             const toggleIcon = toggleBtn.querySelector('.settings-toggle-icon');
-            
+
             if (settingsContent.classList.contains('expanded')) {
                 settingsContent.classList.remove('expanded');
                 toggleBtn.classList.add('collapsed');
@@ -1907,7 +2023,7 @@
             });
             charts = {};
             document.getElementById('charts-container').innerHTML = '';
-            
+
             // Clear stored chart data
             window.currentChartData = null;
         }
@@ -2106,7 +2222,7 @@
             const hiddenCharts = Object.keys(chartVisibility).filter(chartId => chartVisibility[chartId] === false);
             const settingsContent = document.getElementById('chart-settings');
             const settingsCollapsed = settingsContent && !settingsContent.classList.contains('expanded');
-            
+
             if (hiddenCharts.length > 0 || settingsCollapsed) {
                 const chartState = {
                     visibility: chartVisibility,
@@ -2127,18 +2243,18 @@
             if (chartsParam) {
                 try {
                     const chartState = JSON.parse(atob(chartsParam));
-                    
+
                     // Handle both old format (direct visibility object) and new format (with settings state)
                     if (chartState.visibility) {
                         chartVisibility = chartState.visibility;
-                        
+
                         // Restore settings panel state
                         if (chartState.settingsExpanded === false) {
                             setTimeout(() => {
                                 const settingsContent = document.getElementById('chart-settings');
                                 const toggleBtn = document.getElementById('settings-toggle');
                                 const toggleIcon = toggleBtn.querySelector('.settings-toggle-icon');
-                                
+
                                 if (settingsContent && toggleBtn && toggleIcon) {
                                     settingsContent.classList.remove('expanded');
                                     toggleBtn.classList.add('collapsed');
