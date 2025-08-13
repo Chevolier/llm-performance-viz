@@ -8,12 +8,13 @@ import os
 import re
 import logging
 import uuid
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import pandas as pd
 import uvicorn
@@ -27,12 +28,15 @@ app = FastAPI(
     root_path=root_path
 )
 
+# Get analytics configuration from environment variables
+analytics_log_file = os.environ.get('ANALYTICS_LOG', 'viz_access.log')
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('viz_access.log'),
+        logging.FileHandler(analytics_log_file),
         logging.StreamHandler()
     ]
 )
@@ -42,7 +46,9 @@ logger = logging.getLogger(__name__)
 class UserAnalytics:
     """Analytics tracker for user behavior"""
     
-    def __init__(self, log_file: str = "user_analytics.json"):
+    def __init__(self, log_file: str = None):
+        if log_file is None:
+            log_file = os.environ.get('ANALYTICS_FILE', 'user_analytics.json')
         self.log_file = Path(log_file)
         self.sessions = {}
         self.load_existing_data()
@@ -185,6 +191,9 @@ class UserAnalytics:
 
 # Initialize analytics
 analytics = UserAnalytics()
+
+# Record server start time for uptime calculation
+start_time = time.time()
 
 
 class PriceProvider:
@@ -391,6 +400,99 @@ data_provider = ResultsDataProvider(results_dir)
 price_provider = PriceProvider()
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Check if data provider is working
+        data_status = "ok" if data_provider.df is not None else "no_data"
+        
+        # Check analytics system
+        analytics_status = "ok" if analytics.log_file.parent.exists() else "error"
+        
+        # Check if we can write to analytics file
+        try:
+            analytics.log_file.parent.mkdir(parents=True, exist_ok=True)
+            analytics_writable = True
+        except Exception:
+            analytics_writable = False
+        
+        # Overall health status
+        overall_status = "healthy" if (
+            data_status in ["ok", "no_data"] and 
+            analytics_status == "ok" and 
+            analytics_writable
+        ) else "unhealthy"
+        
+        health_data = {
+            "status": overall_status,
+            "timestamp": datetime.now().isoformat(),
+            "version": "1.0.0",
+            "components": {
+                "data_provider": {
+                    "status": data_status,
+                    "total_results": len(data_provider.data) if data_provider.data else 0,
+                    "results_directory": str(data_provider.results_dir)
+                },
+                "analytics": {
+                    "status": analytics_status,
+                    "writable": analytics_writable,
+                    "file_path": str(analytics.log_file),
+                    "total_users": len(analytics.sessions)
+                },
+                "price_provider": {
+                    "status": "ok" if price_provider.prices else "no_prices",
+                    "available_instances": len(price_provider.prices)
+                }
+            },
+            "uptime_seconds": time.time() - start_time
+        }
+        
+        # Return 200 for healthy, 503 for unhealthy
+        status_code = 200 if overall_status == "healthy" else 503
+        
+        return JSONResponse(
+            content=health_data,
+            status_code=status_code
+        )
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e)
+            },
+            status_code=503
+        )
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Simple readiness check for Kubernetes/Docker"""
+    try:
+        # Basic checks for readiness
+        data_ready = data_provider is not None
+        analytics_ready = analytics is not None
+        
+        if data_ready and analytics_ready:
+            return {"status": "ready", "timestamp": datetime.now().isoformat()}
+        else:
+            return JSONResponse(
+                content={"status": "not_ready", "timestamp": datetime.now().isoformat()},
+                status_code=503
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": "error", "error": str(e), "timestamp": datetime.now().isoformat()},
+            status_code=503
+        )
+
+@app.get("/health/live")
+async def liveness_check():
+    """Simple liveness check for Kubernetes/Docker"""
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
 @app.get("/")
 async def index(request: Request):
     """Serve the main HTML page with root path injection"""
@@ -399,7 +501,7 @@ async def index(request: Request):
     
     # Get the directory where this script is located
     current_dir = Path(__file__).parent
-    html_file = current_dir / 'viz_client.html'
+    html_file = current_dir / 'index.html'
     
     # Read the HTML file and inject the root path
     with open(html_file, 'r', encoding='utf-8') as f:
@@ -421,6 +523,9 @@ async def index(request: Request):
     
     from fastapi.responses import HTMLResponse
     return HTMLResponse(content=html_content)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 @app.get("/analytics")
 async def analytics_dashboard(request: Request):
