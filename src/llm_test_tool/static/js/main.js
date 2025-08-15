@@ -230,18 +230,105 @@ function exportData() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
+    // Log export event
+    analytics.logEvent('data_exported', {
+        combinations_count: STATE.selectedCombinations.length,
+        total_data_points: window.currentChartData.reduce((total, item) => total + item.data.length, 0)
+    });
+    
     showSuccess('Data exported successfully!');
 }
 
-// Generate CSV content (simplified version)
+// Generate CSV content with complete performance data
 function generateCSV(data) {
-    // This is a simplified version - you can expand this based on your needs
     let csvContent = `Export Date: ${new Date().toISOString()}\n\n`;
     
-    // Add basic CSV generation logic here
-    data.forEach((item, index) => {
+    // CSV Headers
+    const headers = [
+        'Runtime',
+        'Instance Type', 
+        'Model Name',
+        'Input Tokens',
+        'Output Tokens',
+        'Random Tokens',
+        'Processes',
+        'First Token Latency Mean (ms)',
+        'First Token Latency P50 (ms)',
+        'First Token Latency P90 (ms)',
+        'End to End Latency Mean (ms)',
+        'End to End Latency P50 (ms)',
+        'End to End Latency P90 (ms)',
+        'Output Tokens Per Second Mean',
+        'Output Tokens Per Second P50',
+        'Output Tokens Per Second P90',
+        'Success Rate (%)',
+        'Requests Per Second',
+        'Total Requests',
+        'Successful Requests',
+        'Failed Requests',
+        'Input Throughput (tokens/sec)',
+        'Output Throughput (tokens/sec)',
+        'Server Throughput (tokens/sec)',
+        'Cost Per Million Tokens ($)',
+        'Cost Per 1K Requests ($)',
+        'Cost Per Million Input Tokens ($)',
+        'Cost Per Million Output Tokens ($)',
+        'Instance Price Used ($/hour)'
+    ];
+    
+    csvContent += headers.join(',') + '\n';
+    
+    // Add data rows
+    data.forEach(item => {
         const combo = item.combination;
-        csvContent += `Model ${index + 1}: ${combo.runtime}/${combo.instance_type}/${combo.model_name}\n`;
+        
+        // Sort data by processes for consistent ordering
+        const sortedData = item.data.sort((a, b) => a.processes - b.processes);
+        
+        sortedData.forEach(record => {
+            const row = [
+                combo.runtime,
+                combo.instance_type,
+                combo.model_name,
+                combo.input_tokens,
+                combo.output_tokens,
+                combo.random_tokens,
+                record.processes,
+                record.first_token_latency_mean || 0,
+                record.first_token_latency_p50 || 0,
+                record.first_token_latency_p90 || 0,
+                record.end_to_end_latency_mean || 0,
+                record.end_to_end_latency_p50 || 0,
+                record.end_to_end_latency_p90 || 0,
+                record.output_tokens_per_second_mean || 0,
+                record.output_tokens_per_second_p50 || 0,
+                record.output_tokens_per_second_p90 || 0,
+                (record.success_rate * 100) || 0,
+                record.requests_per_second || 0,
+                record.total_requests || 0,
+                record.successful_requests || 0,
+                record.failed_requests || 0,
+                record.input_throughput || 0,
+                record.output_throughput || 0,
+                record.server_throughput || 0,
+                record.cost_per_million_tokens || 0,
+                record.cost_per_1k_requests || 0,
+                record.cost_per_million_input_tokens || 0,
+                record.cost_per_million_output_tokens || 0,
+                record.instance_price_used || 0
+            ];
+            
+            // Escape any commas in the data and wrap in quotes if needed
+            const escapedRow = row.map(value => {
+                const stringValue = String(value);
+                if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                    return `"${stringValue.replace(/"/g, '""')}"`;
+                }
+                return stringValue;
+            });
+            
+            csvContent += escapedRow.join(',') + '\n';
+        });
     });
     
     return csvContent;
