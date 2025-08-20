@@ -42,23 +42,85 @@ mkdir -p archive_results
 echo "Starting batch tests for vLLM model configurations..."
 echo ""
 
+#==================================================================================
+# g6e.2xlarge
+run_test "model_configs/vllm-v0.9.2/g6e.2xlarge/Qwen3-14B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.2xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.2xlarge/Qwen3-4B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.2xlarge/Qwen3-14B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.2xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.2xlarge/Qwen3-4B-tp1.yaml"
 
+#==================================================================================
 # g6e.4xlarge
 run_test "model_configs/vllm-v0.9.2/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
-
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-30B-A3B-FP8.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-8B-FP8.yaml"
 run_test "model_configs/sglang-v0.4.9.post4/g6e.4xlarge/Qwen3-14B-FP8.yaml"
 
-# g6e.48xlarge
-run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+#==================================================================================
+# g5.2xlarge
+run_test "model_configs/vllm-v0.9.2/g5.2xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/g5.2xlarge/Qwen3-4B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g5.2xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g5.2xlarge/Qwen3-4B-tp1.yaml"
 
+
+
+#==================================================================================
+# g5.48xlarge
+run_test "model_configs/vllm-v0.9.2/g5.48xlarge/Qwen3-8B-tp1dp8.yaml"
+run_test "model_configs/vllm-v0.9.2/g5.48xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g5.48xlarge/Qwen3-32B-tp8.yaml"
+run_test "model_configs/vllm-v0.9.2/g5.48xlarge/Qwen3-32B-tp8.yaml"
+
+#==================================================================================
+# g6e.12xlarge
+run_test "model_configs/vllm-v0.9.2/g6e.12xlarge/Qwen3-32B-tp4.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.12xlarge/Qwen3-32B-tp4.yaml"
+#==================================================================================
+# g6e.48xlarge
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-8B-tp1dp8.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-14B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-14B-tp1dp8.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/g6e.48xlarge/Qwen3-32B-tp8.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-32B-tp8.yaml"
+
+
+
+# run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-235B-A22B-FP8-tp8ep.yaml"
+run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-32B-tp8.yaml"
+# run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-32B-tp4dp2.yaml"
+# run_test "model_configs/vllm-v0.9.2/g6e.48xlarge/Qwen3-32B-tp4dp2.yaml"
+
+# run_test "model_configs/sglang-v0.4.9.post4/g6e.48xlarge/Qwen3-32B-FP8-tp4dp2.yaml"
+# run_test "model_configs/sglang-v0.4.9.post4/g6e.48xlarge/Qwen3-32B-AWQ-tp4dp2.yaml"
+#==================================================================================
 # p4d.24xlarge
+# run_test "model_configs/sglang-v0.4.9.post4/p4d.24xlarge/Qwen3-32B-tp8.yaml"
+# run_test "model_configs/sglang:v0.4.7.post1/p4d.24xlarge/Qwen3-32B-tp8.yaml"
+# run_test "model_configs/sglang:v0.4.7.post1/p4d.24xlarge/Qwen3-30B-A3B-tp8.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-14B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-14B-tp1dp8.yaml"
+
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-8B-tp1.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-8B-tp1dp8.yaml"
+
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-32B-tp4dp2.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-32B-AWQ-tp4dp2.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-32B-AWQ-tp2dp4.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-32B-tp8.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-30B-A3B-tp4dp2.yaml"
+run_test "model_configs/vllm-v0.9.2/p4d.24xlarge/Qwen3-30B-A3B-tp8.yaml"
+
+#==================================================================================
 
 # p4de.24xlarge
 run_test "model_configs/vllm-v0.9.2/p4de.24xlarge/Qwen3-235B-A22B.yaml"
-
 run_test "model_configs/sglang-v0.4.9.post4/p4de.24xlarge/Qwen3-235B-A22B.yaml"
+
+#==================================================================================
 
 # p5.48xlarge
 run_test "model_configs/vllm-v0.9.2/p5.48xlarge/Qwen3-235B-A22B.yaml"
@@ -70,6 +132,14 @@ run_test "model_configs/sglang-v0.4.9.post4/p5.48xlarge/Qwen3-30B-A3B-FP8-tp1dp1
 run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-Air-FP8-tp2dp4-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-Air-FP8-tp4dp2-mtp.yaml"
 run_test "model_configs/sglang-v0.4.9.post6/p5.48xlarge/GLM-4.5-FP8-tp8-mtp.yaml"
+
+#==================================================================================
+
+# p5.48xlarge
+run_test "model_configs/sglang-v0.4.9.post4/p5e.48xlarge/Qwen3-235B-A22B.yaml"
+run_test "model_configs/sglang-v0.4.9.post4/p5e.48xlarge/DeepSeek-R1-0528.yaml"
+
+#==================================================================================
 
 # p5en.48xlarge
 

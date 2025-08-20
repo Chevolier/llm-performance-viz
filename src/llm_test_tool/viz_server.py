@@ -6,11 +6,15 @@ FastAPI server for LLM performance visualization data API.
 import json
 import os
 import re
+import logging
+import uuid
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import pandas as pd
 import uvicorn
@@ -23,6 +27,173 @@ app = FastAPI(
     version="1.0.0",
     root_path=root_path
 )
+
+# Get analytics configuration from environment variables
+analytics_log_file = os.environ.get('ANALYTICS_LOG', 'viz_access.log')
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(analytics_log_file),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+class UserAnalytics:
+    """Analytics tracker for user behavior"""
+    
+    def __init__(self, log_file: str = None):
+        if log_file is None:
+            log_file = os.environ.get('ANALYTICS_FILE', 'user_analytics.json')
+        self.log_file = Path(log_file)
+        self.sessions = {}
+        self.load_existing_data()
+    
+    def load_existing_data(self):
+        """Load existing analytics data"""
+        if self.log_file.exists():
+            try:
+                with open(self.log_file, 'r') as f:
+                    data = json.load(f)
+                    self.sessions = data.get('sessions', {})
+            except Exception as e:
+                logger.error(f"Failed to load analytics data: {e}")
+                self.sessions = {}
+    
+    def get_client_id(self, request: Request) -> str:
+        """Generate or retrieve client ID from request"""
+        # Try to get client ID from headers (set by client-side JS)
+        client_id = request.headers.get('X-Client-ID')
+        if not client_id:
+            # Fallback to IP-based identification
+            client_ip = request.client.host if request.client else 'unknown'
+            user_agent = request.headers.get('User-Agent', 'unknown')
+            client_id = f"{client_ip}_{hash(user_agent) % 10000}"
+        return client_id
+    
+    def log_event(self, request: Request, event_type: str, data: dict = None):
+        """Log user event"""
+        client_id = self.get_client_id(request)
+        timestamp = datetime.now().isoformat()
+        
+        if client_id not in self.sessions:
+            self.sessions[client_id] = {
+                'first_visit': timestamp,
+                'last_visit': timestamp,
+                'visit_count': 0,
+                'events': []
+            }
+        
+        # Update session info
+        self.sessions[client_id]['last_visit'] = timestamp
+        self.sessions[client_id]['visit_count'] += 1
+        
+        # Add event
+        event = {
+            'timestamp': timestamp,
+            'type': event_type,
+            'data': data or {},
+            'ip': request.client.host if request.client else 'unknown',
+            'user_agent': request.headers.get('User-Agent', 'unknown')
+        }
+        
+        self.sessions[client_id]['events'].append(event)
+        
+        # Save to file
+        self.save_data()
+        
+        # Log to console
+        logger.info(f"Analytics: {client_id} - {event_type} - {data}")
+    
+    def save_data(self):
+        """Save analytics data to file"""
+        try:
+            analytics_data = {
+                'last_updated': datetime.now().isoformat(),
+                'total_users': len(self.sessions),
+                'sessions': self.sessions
+            }
+            
+            with open(self.log_file, 'w') as f:
+                json.dump(analytics_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Failed to save analytics data: {e}")
+    
+    def get_stats(self) -> dict:
+        """Get analytics statistics"""
+        if not self.sessions:
+            return {
+                'total_users': 0,
+                'total_page_views': 0,
+                'total_model_selections': 0,
+                'total_chart_additions': 0,
+                'popular_models': [],
+                'popular_runtimes': [],
+                'popular_instances': [],
+                'recent_chart_additions': []
+            }
+        
+        # Count only meaningful events
+        page_view_count = 0
+        model_selection_count = 0
+        chart_addition_count = 0
+        model_counts = {}
+        runtime_counts = {}
+        instance_counts = {}
+        recent_chart_additions = []
+        
+        for session in self.sessions.values():
+            for event in session['events']:
+                # Count page visits
+                if event['type'] == 'page_visit':
+                    page_view_count += 1
+                
+                # Count model selections
+                elif event['type'] == 'model_selected':
+                    model_selection_count += 1
+                    
+                    model = event['data'].get('model_name', 'unknown')
+                    runtime = event['data'].get('runtime', 'unknown')
+                    instance = event['data'].get('instance_type', 'unknown')
+                    
+                    model_counts[model] = model_counts.get(model, 0) + 1
+                    runtime_counts[runtime] = runtime_counts.get(runtime, 0) + 1
+                    instance_counts[instance] = instance_counts.get(instance, 0) + 1
+                
+                # Count chart additions (more meaningful metric)
+                elif event['type'] in ['chart_added_successfully', 'model_added_to_comparison']:
+                    chart_addition_count += 1
+                    recent_chart_additions.append(event)
+        
+        # Sort by popularity
+        popular_models = sorted(model_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        popular_runtimes = sorted(runtime_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        popular_instances = sorted(instance_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        # Get recent chart additions (last 20)
+        recent_chart_additions.sort(key=lambda x: x['timestamp'], reverse=True)
+        recent_chart_additions = recent_chart_additions[:20]
+        
+        return {
+            'total_users': len(self.sessions),
+            'total_page_views': page_view_count,
+            'total_model_selections': model_selection_count,
+            'total_chart_additions': chart_addition_count,
+            'popular_models': popular_models,
+            'popular_runtimes': popular_runtimes,
+            'popular_instances': popular_instances,
+            'recent_chart_additions': recent_chart_additions
+        }
+
+# Initialize analytics
+analytics = UserAnalytics()
+
+# Record server start time for uptime calculation
+start_time = time.time()
 
 
 class PriceProvider:
@@ -218,6 +389,10 @@ class CombinationInfo(BaseModel):
     model_name: str
     id: str
 
+class AnalyticsEvent(BaseModel):
+    event_type: str
+    data: Optional[Dict] = None
+
 # Initialize data and price providers
 # Get results directory from environment variable if set
 results_dir = os.environ.get('RESULTS_DIR', 'archive_results')
@@ -225,12 +400,142 @@ data_provider = ResultsDataProvider(results_dir)
 price_provider = PriceProvider()
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Check if data provider is working
+        data_status = "ok" if data_provider.df is not None else "no_data"
+        
+        # Check analytics system
+        analytics_status = "ok" if analytics.log_file.parent.exists() else "error"
+        
+        # Check if we can write to analytics file
+        try:
+            analytics.log_file.parent.mkdir(parents=True, exist_ok=True)
+            analytics_writable = True
+        except Exception:
+            analytics_writable = False
+        
+        # Overall health status
+        overall_status = "healthy" if (
+            data_status in ["ok", "no_data"] and 
+            analytics_status == "ok" and 
+            analytics_writable
+        ) else "unhealthy"
+        
+        health_data = {
+            "status": overall_status,
+            "timestamp": datetime.now().isoformat(),
+            "version": "1.0.0",
+            "components": {
+                "data_provider": {
+                    "status": data_status,
+                    "total_results": len(data_provider.data) if data_provider.data else 0,
+                    "results_directory": str(data_provider.results_dir)
+                },
+                "analytics": {
+                    "status": analytics_status,
+                    "writable": analytics_writable,
+                    "file_path": str(analytics.log_file),
+                    "total_users": len(analytics.sessions)
+                },
+                "price_provider": {
+                    "status": "ok" if price_provider.prices else "no_prices",
+                    "available_instances": len(price_provider.prices)
+                }
+            },
+            "uptime_seconds": time.time() - start_time
+        }
+        
+        # Return 200 for healthy, 503 for unhealthy
+        status_code = 200 if overall_status == "healthy" else 503
+        
+        return JSONResponse(
+            content=health_data,
+            status_code=status_code
+        )
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e)
+            },
+            status_code=503
+        )
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Simple readiness check for Kubernetes/Docker"""
+    try:
+        # Basic checks for readiness
+        data_ready = data_provider is not None
+        analytics_ready = analytics is not None
+        
+        if data_ready and analytics_ready:
+            return {"status": "ready", "timestamp": datetime.now().isoformat()}
+        else:
+            return JSONResponse(
+                content={"status": "not_ready", "timestamp": datetime.now().isoformat()},
+                status_code=503
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": "error", "error": str(e), "timestamp": datetime.now().isoformat()},
+            status_code=503
+        )
+
+@app.get("/health/live")
+async def liveness_check():
+    """Simple liveness check for Kubernetes/Docker"""
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
 @app.get("/")
-async def index():
+async def index(request: Request):
     """Serve the main HTML page with root path injection"""
+    # Log page visit
+    analytics.log_event(request, 'page_visit', {'page': 'index'})
+    
     # Get the directory where this script is located
     current_dir = Path(__file__).parent
-    html_file = current_dir / 'viz_client.html'
+    html_file = current_dir / 'index.html'
+    
+    # Read the HTML file and inject the root path
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    # Generate client ID for this session
+    client_id = analytics.get_client_id(request)
+    
+    # Inject the root path and client ID as JavaScript variables
+    root_path_script = f"""
+    <script>
+        window.API_BASE_PATH = '{root_path}';
+        window.CLIENT_ID = '{client_id}';
+    </script>
+    """
+    
+    # Insert the script before the closing </head> tag
+    html_content = html_content.replace('</head>', f'{root_path_script}</head>')
+    
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html_content)
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+
+@app.get("/analytics")
+async def analytics_dashboard(request: Request):
+    """Serve the analytics dashboard page"""
+    # Log analytics dashboard access
+    analytics.log_event(request, 'analytics_dashboard_visit')
+    
+    # Get the directory where this script is located
+    current_dir = Path(__file__).parent
+    html_file = current_dir / 'analytics_dashboard.html'
     
     # Read the HTML file and inject the root path
     with open(html_file, 'r', encoding='utf-8') as f:
@@ -250,20 +555,40 @@ async def index():
     return HTMLResponse(content=html_content)
 
 
+@app.post("/api/analytics")
+async def log_analytics_event(request: Request, event: AnalyticsEvent):
+    """Log analytics event from client"""
+    analytics.log_event(request, event.event_type, event.data)
+    return {"status": "logged"}
+
+@app.get("/api/analytics/stats")
+async def get_analytics_stats(request: Request):
+    """Get analytics statistics (admin only)"""
+    # Log admin access
+    analytics.log_event(request, 'admin_stats_access')
+    return analytics.get_stats()
+
 @app.get("/api/combinations", response_model=List[CombinationInfo])
-async def get_combinations():
+async def get_combinations(request: Request):
     """Get all available runtime-instance-model combinations"""
+    analytics.log_event(request, 'api_combinations_access')
     combinations = data_provider.get_combinations()
     return combinations
 
 
 @app.get("/api/parameters")
 async def get_parameters(
+    request: Request,
     runtime: str = Query(..., description="Runtime name"),
     instance_type: str = Query(..., description="Instance type"),
     model_name: str = Query(..., description="Model name")
 ):
     """Get available test parameters for a specific combination"""
+    analytics.log_event(request, 'model_selected', {
+        'runtime': runtime,
+        'instance_type': instance_type,
+        'model_name': model_name
+    })
     parameters = data_provider.get_test_parameters(runtime, instance_type, model_name)
     return parameters
 
@@ -312,9 +637,18 @@ class ComparisonRequestWithPrice(BaseModel):
     instance_price: Optional[float] = 0.0
 
 @app.post("/api/comparison-data")
-async def get_comparison_data(request: ComparisonRequest):
+async def get_comparison_data(http_request: Request, request: ComparisonRequest):
     """Get performance data for multiple combinations for comparison"""
     try:
+        # Log comparison request
+        analytics.log_event(http_request, 'comparison_generated', {
+            'combinations_count': len(request.combinations),
+            'combinations': [
+                f"{combo.get('runtime', 'unknown')}-{combo.get('instance_type', 'unknown')}-{combo.get('model_name', 'unknown')}"
+                for combo in request.combinations
+            ]
+        })
+        
         result = []
         for combo in request.combinations:
             data = data_provider.get_performance_data(combo)
@@ -323,34 +657,75 @@ async def get_comparison_data(request: ComparisonRequest):
             instance_type = combo.get('instance_type', '')
             instance_price = price_provider.get_price(instance_type)
             
-            # Calculate cost metrics if we have a price
-            if instance_price and instance_price > 0:
-                for record in data:
-                    server_throughput = record.get('server_throughput', 0)
-                    requests_per_second = record.get('requests_per_second', 0)
-                    
+            # Calculate cost metrics and additional throughput metrics
+            for record in data:
+                # Get basic metrics
+                first_token_latency = record.get('first_token_latency_mean', 0)
+                end_to_end_latency = record.get('end_to_end_latency_mean', 0)
+                input_tokens = record.get('input_tokens', 0)
+                output_tokens = record.get('output_tokens', 0)
+                processes = record.get('processes', 1)  # Get concurrency level
+                requests_per_second = record.get('requests_per_second', 0)
+                server_throughput = record.get('server_throughput', 0)
+                
+                # Calculate input throughput (tokens/sec)
+                # Input throughput = (input_tokens * processes) / first_token_latency
+                if first_token_latency > 0 and input_tokens > 0:
+                    input_throughput = (input_tokens * processes) / first_token_latency * (requests_per_second / (processes / end_to_end_latency))
+                    record['input_throughput'] = input_throughput
+                else:
+                    record['input_throughput'] = 0
+                
+                # Calculate output throughput (tokens/sec) 
+                # Output latency = end_to_end_latency - first_token_latency
+                # Output throughput = (output_tokens * processes) / output_latency
+                output_latency = end_to_end_latency - first_token_latency
+                if output_latency > 0 and output_tokens > 0:
+                    output_throughput = (output_tokens * processes) / output_latency * (requests_per_second / (processes / end_to_end_latency))
+                    record['output_throughput'] = output_throughput
+                else:
+                    record['output_throughput'] = 0
+                
+                # Calculate cost metrics if we have a price
+                if instance_price and instance_price > 0:
+                    # Existing cost calculations
                     if server_throughput > 0:
-                        # Cost per million tokens = instance_price_per_hour / (server_throughput_tokens_per_second * 3600) * 1,000,000
-                        # Simplified: instance_price / server_throughput * 1,000,000 / 3600
                         cost_per_million_tokens = (instance_price / server_throughput) * 1000000 / 3600
                         record['cost_per_million_tokens'] = cost_per_million_tokens
                     else:
                         record['cost_per_million_tokens'] = 0
                     
                     if requests_per_second > 0:
-                        # Cost per 1k requests = instance_price_per_hour / (requests_per_second * 3600) * 1000
-                        # Simplified: instance_price / requests_per_second * 1000 / 3600
                         cost_per_1k_requests = (instance_price / requests_per_second) * 1000 / 3600
                         record['cost_per_1k_requests'] = cost_per_1k_requests
                     else:
                         record['cost_per_1k_requests'] = 0
                     
+                    # Calculate input token pricing
+                    # Cost per million input tokens = instance_price_per_hour / (input_throughput_tokens_per_second * 3600) * 1,000,000
+                    input_throughput_val = record.get('input_throughput', 0)
+                    if input_throughput_val > 0:
+                        cost_per_million_input_tokens = (instance_price / input_throughput_val) * 1000000 / 3600
+                        record['cost_per_million_input_tokens'] = cost_per_million_input_tokens
+                    else:
+                        record['cost_per_million_input_tokens'] = 0
+                    
+                    # Calculate output token pricing
+                    # Cost per million output tokens = instance_price_per_hour / (output_throughput_tokens_per_second * 3600) * 1,000,000
+                    output_throughput_val = record.get('output_throughput', 0)
+                    if output_throughput_val > 0:
+                        cost_per_million_output_tokens = (instance_price / output_throughput_val) * 1000000 / 3600
+                        record['cost_per_million_output_tokens'] = cost_per_million_output_tokens
+                    else:
+                        record['cost_per_million_output_tokens'] = 0
+                    
                     record['instance_price_used'] = instance_price
-            else:
-                # Set cost to 0 if no price available
-                for record in data:
+                else:
+                    # Set cost to 0 if no price available
                     record['cost_per_million_tokens'] = 0
                     record['cost_per_1k_requests'] = 0
+                    record['cost_per_million_input_tokens'] = 0
+                    record['cost_per_million_output_tokens'] = 0
                     record['instance_price_used'] = 0
             
             result.append({
@@ -365,10 +740,14 @@ async def get_comparison_data(request: ComparisonRequest):
 
 
 @app.get("/api/tree-structure")
-async def get_tree_structure():
+async def get_tree_structure(request: Request, reload: bool = Query(False, description="Whether to reload data from disk")):
     """Get hierarchical tree structure of Runtime -> Instance Type -> Model"""
-    # Reload all results from disk to get the latest data
-    data_provider.load_all_results()
+    # Log tree structure access
+    analytics.log_event(request, 'tree_structure_access', {'reload': reload})
+    
+    # Only reload all results from disk if explicitly requested (e.g., by refresh button)
+    if reload:
+        data_provider.load_all_results()
     
     if data_provider.df is None or data_provider.df.empty:
         return {"tree": []}
